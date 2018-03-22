@@ -1,0 +1,4 @@
+{:deps
+ {fooheads/clj-refactor {:local/root "../clj-refactor"}
+  neovim-client {:mvn/version "0.1.0"}
+  }}
