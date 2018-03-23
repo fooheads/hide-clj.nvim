@@ -10,9 +10,10 @@
 (defn -main [& args]
   (println "Starting Hide for Neovim.")
 
+  ; Start Neovim with: 
+  ;   NVIM_LISTEN_ADDRESS=127.0.0.1:7777 nvim
   (let [conn (neovim-client.nvim/new 1 "localhost" 7777)
-        x (atom 0)
-        ]
+        x (atom 0)]
 
     ; This can be read from Neovim
     (api/command conn ":let g:is_running=1")
