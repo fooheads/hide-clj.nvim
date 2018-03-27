@@ -1,7 +1,7 @@
 {:deps
  {fooheads/hide-clj {:local/root "../hide.clj" :deps/manifest :deps}
   ; neovim-client {:mvn/version "0.1.0"}
-  ; neovim-client {:local/root "../../../code/neovim-client" :deps/manifest :deps}
+  neovim-client {:local/root "../../../code/neovim-client" :deps/manifest :deps}
 
   org.clojure/core.async {:mvn/version "0.3.442"}
   org.clojure/tools.logging {:mvn/version "0.3.1"}
