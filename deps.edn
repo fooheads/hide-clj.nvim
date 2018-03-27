@@ -1,4 +1,16 @@
 {:deps
  {fooheads/hide-clj {:local/root "../hide.clj" :deps/manifest :deps}
-  neovim-client {:mvn/version "0.1.0"}
+  ; neovim-client {:mvn/version "0.1.0"}
+  ; neovim-client {:local/root "../../../code/neovim-client" :deps/manifest :deps}
+
+  org.clojure/core.async {:mvn/version "0.3.442"}
+  org.clojure/tools.logging {:mvn/version "0.3.1"}
+  org.clojure/tools.namespace {:mvn/version "0.2.11"}
+  log4j/log4j {:mvn/version "1.2.17"} ; :exclusions [javax.mail/mail
+  ; javax.jms/jms
+  ; com.sun.jmdk/jmxtools
+  ; com.sun.jmx/jmxri]
+  clj-logging-config {:mvn/version "1.9.12"}
+  clojure-msgpack {:mvn/version "1.2.0"}
+  uk.co.caprica/juds {:mvn/version "0.94.1"}
   }}
