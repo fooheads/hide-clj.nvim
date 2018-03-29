@@ -1,19 +1,27 @@
 (ns fooheads.hide-nvim.refactor
   (:require [fooheads.hide.refactor :as r :reload true]
-            [neovim.core :as n]
-            ))
+            [neovim.core :as n]))
 
-(defn get-lines [client]
+(defn get-lines 
+  "Returns the current buffer as a list of lines." 
+  [client]
   (n/exec client (n/buf-get-lines (n/get-current-buf) 0 -1 false)))
 
-(defn set-lines! [lines client]
+(defn set-lines! 
+  "Replace the content of the current buffer with `lines`." 
+  [lines client]
   (n/exec client (n/buf-set-lines (n/get-current-buf) 0 -1 false lines)))
 
-(defn get-cursor [client]
+(defn get-cursor 
+  "Returns the cursor (row,col), with the same (row,col) as
+  is visual insode nvim."
+  [client]
   (let [[row col] (n/exec client (n/win-get-cursor (n/get-current-win)))]
     [row (+ col 1)]))
 
-(defn get-buffer [client]
+(defn get-buffer 
+  "Returns the full current buffer as a single string."
+  [client]
   (->> client
       get-lines
       (clojure.string/join "\n")))
