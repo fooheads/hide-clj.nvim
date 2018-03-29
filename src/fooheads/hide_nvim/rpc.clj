@@ -86,21 +86,58 @@
 
           (throw (Exception. (str "Unsupported msg-type: " msg-type))))))))
 
-(defn write-message [{:keys [input-stream output-stream]} packed-msg]
-    (.write output-stream packed-msg 0 (count packed-msg))     
-    (.flush output-stream))
+(defn write-message [{:keys [output-stream]} msg]
+  (msgpack/pack-stream msg output-stream)
+  (.flush output-stream)
 
-(defn read-message [{:keys [input-stream output-stream]}]
-   (msgpack/unpack input-stream))
+  #_(let [packed-msg (msgpack/pack msg)]
+    (.write output-stream packed-msg 0 (count packed-msg))
+    (.flush output-stream))
+  
+  )
+
+
+(defn read-message [{:keys [input-stream]}]
+  (msgpack/unpack input-stream))
+
+
+
+(defn send-msg [conn fn-name args]
+  (prn "the-conn:" conn)
+  (let [channel (:channel conn)
+        seq-num 1
+        msg [0 channel fn-name args]]
+
+    (clojure.pprint/pprint conn)
+    (prn "channel" channel)
+    (prn "channel" (:channel channel))
+    (prn "send message" msg)
+
+    (write-message conn msg)))
+
+(defn recv-msg [conn]
+  (let [response-msg (read-message conn)]
+    (prn "response-msg:" response-msg)
+    (let [[msg-type msg-id _ msg] response-msg
+          [channel data] msg]
+
+      msg)))
+
+(defn send-recv-msg [conn fn-name args]
+  (send-msg conn fn-name args)
+  (recv-msg conn))
+
+(defn nvim-get-current-buf [conn]
+  (send-recv-msg conn "nvim_get_current_buf" []))
 
 (defn nvim-get-api-info [conn]
   (let [request-msg [0 1 "nvim_get_api_info" []]
-        packed (msgpack/pack request-msg)
-        _ (write-message conn packed)
+        _ (write-message conn request-msg)
         response-msg (read-message conn)
         [msg-type msg-id _ msg] response-msg
         [channel api-info] msg]
 
+    (prn "RESPONSE" response-msg)
     (log/debug "channel: " channel)
     ; (log/debug "api-info: " (keys api-info))
     channel
@@ -114,12 +151,15 @@
   (prn (class channel))
   (let [vim-command (format "let g:hide_channel = %d" channel)
         request-msg [0 1 "nvim_command" [vim-command]]
-        packed (msgpack/pack request-msg)
-        _ (write-message conn packed)
+        _ (write-message conn request-msg)
         response-msg (read-message conn)
         ]
 
     (log/debug "response: " response-msg)))
+
+(defonce state (atom {}))
+
+(defn conn [] (:conn @state))
 
 (defn start []
   (let [conn (connect)
@@ -130,10 +170,12 @@
     ;; Call nvim_get_api_info
     ;; Channel is first argument in response
 
-    (prn "channel:" (nvim-get-channel conn))
-    (set-hide-channel-in-vim conn (nvim-get-channel conn))
+    (let [channel (nvim-get-channel conn)]
+      (prn "channel:" channel)
+      (set-hide-channel-in-vim conn channel)
+      (reset! state {:conn (assoc conn :channel channel)}))
 
-    (async/thread-call (partial event-loop input-stream output-stream))
+    ;(async/thread-call (partial event-loop input-stream output-stream))
     ))
 
 

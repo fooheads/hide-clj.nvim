@@ -1,7 +1,9 @@
 (ns fooheads.hide-nvim
-  (:require [clojure.tools.logging :as log])
-  (:refer-clojure :exclude [eval]))
+  (:require [fooheads.hide :as h]
+            
+            ))
 
-(defn eval [code]
-  (log/debug "EVALING" code)
-  (clojure.core/eval (read-string code)))
+
+(def eval-code h/eval-code)
+
+
