@@ -1,4 +1,4 @@
-(ns fooheads.hide-clj.nvim.core
+(ns fooheads.hide-nvim.rpc
   (:require [fooheads.hide-nvim]
             [clojure.core.async :as async] 
             [clojure.tools.logging :as log]
