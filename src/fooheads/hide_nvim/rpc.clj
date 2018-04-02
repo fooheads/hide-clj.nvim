@@ -1,25 +1,29 @@
 (ns fooheads.hide-nvim.rpc
-  (:require [fooheads.hide-nvim]
+  (:require [fooheads.hide-nvim :as h]
             [clojure.core.async :as async] 
             [clojure.tools.logging :as log]
             [msgpack.clojure-extensions]
             [msgpack.core :as msgpack]
+            [neovim.core :as nvim]
             ))
 
 ;; 
 ;; hide-clj.nvim 
 ;; 
 
-(defn connect []
+(defn connect 
+  ([] (connect 7777))
+  
+  ([port]
   (let [host "localhost"
-        port 7777
+        port port
         socket (java.net.Socket. host port)
         istream (.getInputStream socket)
         ostream (.getOutputStream socket)]
     (.setTcpNoDelay socket true)
 
     {:input-stream istream
-     :output-stream ostream}))
+     :output-stream ostream})))
 
 (defn start-repl []
   (clojure.core.server/start-server 
@@ -30,14 +34,15 @@
   (let [f (resolve (symbol func))]
     (try
       (apply f args)
-      (catch Exception e (.getMessage e)))))
+      (catch Exception e (log/error (.getMessage e))))))
 
-(defn event-loop [input-stream output-stream]
+(defn event-loop [nvim-client input-stream output-stream]
+  (prn "Started event-loop...")
   (loop []
-    (log/info "waiting for message...")
+    (log/debug "waiting for message...")
 
     (when-let [msg (msgpack/unpack input-stream)]
-      (log/info "->m " msg)
+      (log/debug "->m " msg)
       (let [[msg-type & msg-data] msg]
         ; (log/debug "  msg-type:" msg-type)
         (log/debug "  msg-data:" msg-data)
@@ -46,11 +51,13 @@
           0 ; request
           (let [[channel func args] msg-data]
 
+            (throw (Exception. "Unsupported. Only notify is supported.")) 
             (log/debug "  rpcrequest: ")
             (log/debug "    channel: " channel)
             (log/debug "    func: " func)
             (log/debug "    args: " args)
-            (let [res (eval-func func args)]
+            (log/debug "    class args: " (class args))
+            (let [res (eval-func func (cons nvim-client args))]
               (log/debug "res:" res)
 
               (do 
@@ -60,7 +67,7 @@
                       packed (msgpack/pack response-msg)]
                   (.write output-stream packed 0 (count packed))     
                   (.flush output-stream)
-                  (log/info "<-m " response-msg)
+                  (log/debug "<-m " response-msg)
                   )))
 
             (if-not (= func ":quit") 
@@ -78,54 +85,45 @@
             (log/debug "  rpcnotify: ")
             (log/debug "    func: " func)
             (log/debug "    args: " args)
+            (log/debug "    class args: " (class args))
             (log/debug "<-m")
 
             (if-not (= func ":quit") 
-              (recur)
-              (log/debug "received :quit. Quitting.")))
+              (do (let [res (eval-func func (cons nvim-client args))]
+                    (log/debug "res: " res))
+                  (recur))
+              (log/info "received :quit. Quitting.")))
 
           (throw (Exception. (str "Unsupported msg-type: " msg-type))))))))
 
 (defn write-message [{:keys [output-stream]} msg]
   (msgpack/pack-stream msg output-stream)
-  (.flush output-stream)
-
-  #_(let [packed-msg (msgpack/pack msg)]
-    (.write output-stream packed-msg 0 (count packed-msg))
-    (.flush output-stream))
-  
-  )
-
+  (.flush output-stream))
 
 (defn read-message [{:keys [input-stream]}]
   (msgpack/unpack input-stream))
 
-
-
 (defn send-msg [conn fn-name args]
-  (prn "the-conn:" conn)
   (let [channel (:channel conn)
         seq-num 1
         msg [0 channel fn-name args]]
-
-    (clojure.pprint/pprint conn)
-    (prn "channel" channel)
-    (prn "channel" (:channel channel))
-    (prn "send message" msg)
-
     (write-message conn msg)))
 
 (defn recv-msg [conn]
   (let [response-msg (read-message conn)]
-    (prn "response-msg:" response-msg)
     (let [[msg-type msg-id _ msg] response-msg
           [channel data] msg]
-
       msg)))
 
 (defn send-recv-msg [conn fn-name args]
   (send-msg conn fn-name args)
   (recv-msg conn))
+
+(defn send-notification [conn fn-name args]
+  (let [channel (:channel conn)
+        seq-num 1
+        msg [2 channel fn-name args]]
+    (write-message conn msg)))
 
 (defn nvim-get-current-buf [conn]
   (send-recv-msg conn "nvim_get_current_buf" []))
@@ -136,47 +134,42 @@
         response-msg (read-message conn)
         [msg-type msg-id _ msg] response-msg
         [channel api-info] msg]
-
-    (prn "RESPONSE" response-msg)
-    (log/debug "channel: " channel)
-    ; (log/debug "api-info: " (keys api-info))
-    channel
     [channel api-info]))
 
 (defn nvim-get-channel [conn]
   (first (nvim-get-api-info conn)))
 
 (defn set-hide-channel-in-vim [conn channel]
-  (prn "channel: " channel)
-  (prn (class channel))
   (let [vim-command (format "let g:hide_channel = %d" channel)
-        request-msg [0 1 "nvim_command" [vim-command]]
-        _ (write-message conn request-msg)
-        response-msg (read-message conn)
-        ]
-
-    (log/debug "response: " response-msg)))
+        request-msg [0 1 "nvim_command" [vim-command]]]
+    (write-message conn request-msg)
+    (read-message conn)))
 
 (defonce state (atom {}))
 
 (defn conn [] (:conn @state))
 
-(defn start []
-  (let [conn (connect)
-        input-stream (:input-stream conn)
-        output-stream (:output-stream conn)
-        ]
+(defn start 
+  ([] (start 7777))
+  ([port] (start "localhost" port))
+  ([host port]
+   (log/infof "Connecting to neovim at port %s:%d" host port)
 
-    ;; Call nvim_get_api_info
-    ;; Channel is first argument in response
+   (let [conn (connect port)
+         nvim-client (nvim/client 1 host port) 
+         input-stream (:input-stream conn)
+         output-stream (:output-stream conn)
+         ]
 
-    (let [channel (nvim-get-channel conn)]
-      (prn "channel:" channel)
-      (set-hide-channel-in-vim conn channel)
-      (reset! state {:conn (assoc conn :channel channel)}))
+     ;; Call nvim_get_api_info
+     ;; Channel is first argument in response
 
-    ;(async/thread-call (partial event-loop input-stream output-stream))
-    ))
+     (let [channel (nvim-get-channel conn)]
+       (set-hide-channel-in-vim conn channel)
+       (reset! state {:conn (assoc conn :channel channel)}))
+
+     (async/thread-call (partial event-loop nvim-client input-stream output-stream))
+     )))
 
 
 
