@@ -38,14 +38,7 @@
       (catch Exception e (log/error e)))))
 
 (defn event-loop [nvim-client input-stream output-stream]
-  (prn "Started event-loop...")
-  (prn nvim-client)
-  (prn input-stream)
-  (prn output-stream)
-  (prn "done")
-
   (while true
-    (prn "WAITING FOR MESSAGE")
     (log/debug "waiting for message...")
 
     (when-let [msg (msgpack/unpack input-stream)]
