@@ -39,7 +39,7 @@
 
 (defn my-system [host port]
   (fn [do-with-state]
-    (with-open [connection (closeable (make-connection host port) (fn [conn] (prn "CLOSING SOCKET") (.close (:socket conn))))
+    (with-open [connection (closeable (make-connection host port) (fn [conn] (.close (:socket conn))))
                 nvim-client (closeable (nvim/client 1 host port)) 
                 channel (rpc/nvim-get-channel @connection)
                 _ (rpc/set-hide-channel-in-vim @connection channel)
