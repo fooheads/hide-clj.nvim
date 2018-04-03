@@ -34,7 +34,7 @@
   (let [f (resolve (symbol func))]
     (try
       (apply f args)
-      (catch Exception e (log/error (.getMessage e))))))
+      (catch Exception e (log/error e)))))
 
 (defn event-loop [nvim-client input-stream output-stream]
   (prn "Started event-loop...")

@@ -32,6 +32,7 @@
         [row col] (get-cursor client)]
 
     (let [refactored-code (r/move-to-let code row col binding-name)]
+      (prn refactored-code)
       (-> refactored-code
           (clojure.string/split #"\n") 
           (set-lines! client)))))

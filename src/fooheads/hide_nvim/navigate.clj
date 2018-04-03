@@ -27,8 +27,17 @@
       get-lines
       (clojure.string/join "\n")))
 
+(defn escape [s]
+  (clojure.string/replace s "\"" "\\\""))
+
 (defn edit [client full-path]
   (n/exec client (n/command (str ":edit " full-path))))
+
+(defn echo [client s]
+  (n/exec client (n/command (str ":echo \"" (escape s) "\""))))
+
+(defn echom [client s]
+  (n/exec client (n/command (str ":echom 'EKA!!! " s "'"))))
 
 (defn get-namespace [client]
   (let [code (get-buffer client)
@@ -45,3 +54,14 @@
    (let [[full-path new-row new-col] (hn/find-definition code row col)]
      (edit client full-path)
      (set-cursor client new-row new-col))))
+
+(defn doc
+  ([client]
+   (let [code (get-buffer client)
+         [row col] (get-cursor client)]
+     (doc client code row col)))
+
+  ([client code row col]
+   (let [doc-text (hn/doc code row col)]
+     (echo client doc-text))))
+
