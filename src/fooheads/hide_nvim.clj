@@ -7,21 +7,20 @@
 
 (def eval-code h/eval-code)
 
-(def repl-prompt-separator (apply str (repeat 20 "-")))
+(defn repl-prompt-separator [] (apply str (repeat 20 "-")))
 
 (defn repl-prompt [] 
-  (printf "%s\n%s=> " repl-prompt-separator (ns-name *ns*)))
+  (printf "%s\n%s=> " (repl-prompt-separator) (ns-name *ns*)))
 
 (defn repl-init []
   (client/start)
+  (binding [*ns* (find-ns 'user)]
+    (require '[fooheads.hide-nvim.client :refer [reset]]))
+
   (println "\nWelcome to Hide - The Headless IDE!")
   )
 
 (defn -main [& args]
-
-  (binding [*ns* 'user]
-    (def reset 'fooheads.hide-nvim.client/reset))
-
   (clojure.main/repl 
     :init repl-init
     :prompt repl-prompt
