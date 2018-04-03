@@ -13,4 +13,5 @@
   clj-logging-config {:mvn/version "1.9.12"}
   clojure-msgpack {:mvn/version "1.2.0"}
   uk.co.caprica/juds {:mvn/version "0.94.1"}
-  }}
+  }
+ :aliases {:hide {:main-opts ["-m" "fooheads.hide-nvim"]}}}

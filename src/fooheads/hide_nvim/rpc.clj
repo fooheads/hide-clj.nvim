@@ -1,5 +1,5 @@
 (ns fooheads.hide-nvim.rpc
-  (:require [fooheads.hide-nvim :as h]
+  (:require [fooheads.hide-nvim.navigate :as hnn]
             [clojure.core.async :as async] 
             [clojure.tools.logging :as log]
             [msgpack.clojure-extensions]
@@ -32,6 +32,7 @@
 
 (defn eval-func [func args]
   (let [f (resolve (symbol func))]
+    (assert f (str "Unable to resolve " func))
     (try
       (apply f args)
       (catch Exception e (log/error e)))))
