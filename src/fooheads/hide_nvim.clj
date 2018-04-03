@@ -5,7 +5,7 @@
 
 (def eval-code h/eval-code)
 
-(defn -main [& args]
+#_(defn -main [& args]
   (rpc/start 7778)
   (clojure.main/repl))
 

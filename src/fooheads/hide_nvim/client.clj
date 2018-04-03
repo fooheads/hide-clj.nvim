@@ -1,16 +1,49 @@
-(ns fooheads.hide-nvim.client)
+(ns fooheads.hide-nvim.client
+  (:require [fooheads.hide-nvim.rpc :as rpc]
+            [neovim.core :as nvim]))
 
-(defn make-connection [host port]
-  {:input-stream :da-input-stream
-   :output-stream :da-output-stream})
+(defn closeable
+  ([value] (closeable value identity))
+  ([value close] 
+   (reify
+     clojure.lang.IDeref
+     (deref [_] value)
+     java.io.Closeable
+     (close [_] (if (future? value)
+                  (future-cancel value)
+                  (close value))))))
 
-(defn make-event-loop [connection]
-  (future (while true (println "Alive") (Thread/sleep 5000))))
 
-(defn my-system [host port config-options]
+(defn make-connection
+  [host port]
+  (let [socket (java.net.Socket. host port)
+        istream (.getInputStream socket)
+        ostream (.getOutputStream socket)]
+    (.setTcpNoDelay socket true)
+
+    {:socket socket
+     :input-stream istream
+     :output-stream ostream}))
+
+
+;;(defn make-connection [host port]
+;;  {:input-stream :da-input-stream
+;;   :output-stream :da-output-stream})
+
+(defn make-event-loop [nvim-client connection]
+  ;(future (while true (println "Alive") (Thread/sleep 5000)))
+  (rpc/event-loop 
+    nvim-client 
+    (:input-stream connection)
+    (:output-stream connection)))
+
+(defn my-system [host port]
   (fn [do-with-state]
-    (with-open [connection (closeable (make-connection host port))
-                event-loop (closeable (make-event-loop connection))]
+    (with-open [connection (closeable (make-connection host port) (fn [conn] (prn "CLOSING SOCKET") (.close (:socket conn))))
+                nvim-client (closeable (nvim/client 1 host port)) 
+                channel (rpc/nvim-get-channel @connection)
+                _ (rpc/set-hide-channel-in-vim @connection channel)
+                event-loop (future (make-event-loop @nvim-client @connection))]
 
       (do-with-state {:connection @connection
                       :event-loop @event-loop})
@@ -18,11 +51,12 @@
 
       )))
 
-(def with-my-system
-  (my-system "localhost" 7777 {:interval "every now and then"}))
+(def with-my-system (my-system "localhost" 7778))
 
 (defn await-event-loop [state]
-  (deref (:event-loop state)))
+  ; (deref (:event-loop state))
+  (println "AWAIT EVENT LOOP DONE")
+  )
 
 
 ;(with-my-system await-event-loop)
@@ -57,26 +91,28 @@
     (try @instance-future
          (catch java.util.concurrent.CancellationException _ :stopped))))
 
-(defn reset []
-  (stop)
-  (clojure.tools.namespace.repl/refresh :after 'user/start))
+(defn reset 
+  ([client] (reset)) 
+  ([]
+   (stop)
+   (clojure.tools.namespace.repl/refresh :after 'fooheads.hide-nvim.client/start)))
 
 
 ; Run
 ;(def instance (future-call @init))
 
-(start)
-
-@state
-
-(stop)
-
-
-; Stop
-(future-cancel instance)
-@instance
-
-(def event-loop (make-event-loop {}))
-(deref event-loop)
-(future-cancel event-loop)
-(realized? event-loop)
+; (start)
+; 
+; @state
+; 
+; (stop)
+; 
+; 
+; ; Stop
+; (future-cancel instance)
+; @instance
+; 
+; (def event-loop (make-event-loop {}))
+; (deref event-loop)
+; (future-cancel event-loop)
+; (realized? event-loop)
