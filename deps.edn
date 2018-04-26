@@ -1,5 +1,6 @@
 {:deps
- {fooheads/hide-clj {:local/root "../hide-clj" :deps/manifest :deps}
+ {fooheads/hide-clj {:git/url "git@github.com:fooheads/hide-clj"
+                         :sha "edb780a695a58a90d05389fee5abff312cf6371c"}
   ; neovim-client {:local/root "../../../code/neovim-client" :deps/manifest :deps}
   neovim-client {:mvn/version "0.1.2"}
   org.exupero/neovim {:mvn/version "0.1.1-SNAPSHOT"}
