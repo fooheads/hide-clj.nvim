@@ -38,6 +38,7 @@
     (:output-stream connection)))
 
 (defn my-system [host port]
+  (println (format "Connecting to %s:%d" host port))
   (fn [do-with-state]
     (with-open [connection (closeable (make-connection host port) (fn [conn] (.close (:socket conn))))
                 nvim-client (closeable (nvim/client 1 host port)) 
@@ -46,17 +47,20 @@
                 event-loop (future (make-event-loop @nvim-client @connection))]
 
       (do-with-state {:connection @connection
-                      :event-loop @event-loop})
+                      :event-loop @event-loop}))))
 
 
-      )))
+      
 
-(def with-my-system (my-system "localhost" 7778))
+(def port (or (some-> "HIDE_PORT" System/getenv Integer/parseInt)
+	      7778))
+
+(def with-my-system (my-system "localhost" port))
 
 (defn await-event-loop [state]
   ; (deref (:event-loop state))
-  (println "AWAIT EVENT LOOP DONE")
-  )
+  (println "AWAIT EVENT LOOP DONE"))
+  
 
 
 ;(with-my-system await-event-loop)
