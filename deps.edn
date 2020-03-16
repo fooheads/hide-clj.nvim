@@ -1,6 +1,7 @@
 {:deps
- {fooheads/hide-clj {:git/url "git@github.com:fooheads/hide-clj"
-                         :sha "edb780a695a58a90d05389fee5abff312cf6371c"}
+ {;fooheads/hide-clj {:git/url "git@github.com:fooheads/hide-clj"
+  ;                       :sha "edb780a695a58a90d05389fee5abff312cf6371c"
+  fooheads/hide-clj {:local/root "/Users/nicke/w/fooheads/hide-clj"}
   neovim-client {:mvn/version "0.1.2"}
   org.exupero/neovim {:mvn/version "0.1.1-SNAPSHOT"}
   org.clojure/core.async {:mvn/version "0.3.442"}
@@ -10,6 +11,6 @@
   clj-logging-config {:mvn/version "1.9.12"}
   clojure-msgpack {:mvn/version "1.2.0"}
   uk.co.caprica/juds {:mvn/version "0.94.1"}
-  mvxcvi/puget {:mvn/version "1.0.2"}
-  }
+  mvxcvi/puget {:mvn/version "1.0.2"}}
+  
  :aliases {:hide {:main-opts ["-m" "fooheads.hide-nvim"]}}}

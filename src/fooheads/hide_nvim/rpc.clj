@@ -4,8 +4,8 @@
             [clojure.tools.logging :as log]
             [msgpack.clojure-extensions]
             [msgpack.core :as msgpack]
-            [neovim.core :as nvim]
-            ))
+            [neovim.core :as nvim]))
+            
 
 ;; 
 ;; hide-clj.nvim 
@@ -67,14 +67,14 @@
                       packed (msgpack/pack response-msg)]
                   (.write output-stream packed 0 (count packed))     
                   (.flush output-stream)
-                  (log/debug "<-m " response-msg)
-                  )))
+                  (log/debug "<-m " response-msg))))
+                  
 
             #_(if-not (= func ":quit") 
                 (recur)
-                (log/debug "received :quit. Quitting."))
+                (log/debug "received :quit. Quitting.")))
 
-            )
+            
 
           1 ; response
           (let []
@@ -98,9 +98,9 @@
                     (recur))
                 (log/info "received :quit. Quitting.")))
 
-          (throw (Exception. (str "Unsupported msg-type: " msg-type))))))
-    )
-  )
+          (throw (Exception. (str "Unsupported msg-type: " msg-type))))))))
+    
+  
       
 
 (defn write-message [{:keys [output-stream]} msg]

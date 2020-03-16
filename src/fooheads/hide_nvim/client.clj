@@ -46,17 +46,17 @@
                 event-loop (future (make-event-loop @nvim-client @connection))]
 
       (do-with-state {:connection @connection
-                      :event-loop @event-loop})
+                      :event-loop @event-loop}))))
 
 
-      )))
+      
 
 (def with-my-system (my-system "localhost" 7778))
 
 (defn await-event-loop [state]
   ; (deref (:event-loop state))
-  (println "AWAIT EVENT LOOP DONE")
-  )
+  (println "AWAIT EVENT LOOP DONE"))
+  
 
 
 ;(with-my-system await-event-loop)

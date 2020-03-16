@@ -17,8 +17,8 @@
   (binding [*ns* (find-ns 'user)]
     (require '[fooheads.hide-nvim.client :refer [reset]]))
 
-  (println "\nWelcome to Hide - The Headless IDE!")
-  )
+  (println "\nWelcome to Hide - The Headless IDE!"))
+  
 
 (defn -main [& args]
   (clojure.main/repl 
