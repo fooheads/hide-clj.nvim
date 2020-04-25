@@ -1,7 +1,7 @@
 {:deps
  {;fooheads/hide-clj {:git/url "git@github.com:fooheads/hide-clj"
   ;                       :sha "edb780a695a58a90d05389fee5abff312cf6371c"
-  ;fooheads/hide-clj {:local/root "/Users/nicke/w/fooheads/hide-clj"}}
+  fooheads/hide-clj {:local/root "/Users/nicke/w/fooheads/hide-clj"}
   ;neovim-client {:mvn/version "0.1.2"}
   org.exupero/neovim {:mvn/version "0.1.1-SNAPSHOT"}
   ;org.clojure/core.async {:mvn/version "0.3.442"}

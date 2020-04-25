@@ -1,184 +1,93 @@
 (ns fooheads.hide-nvim.rpc
-  (:require [fooheads.hide-nvim.navigate :as hnn]
-            [clojure.core.async :as async] 
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [msgpack.clojure-extensions]
-            [msgpack.core :as msgpack]
-            [neovim.core :as nvim]))
-            
+            [msgpack.core :as msgpack]))
 
-;; 
-;; hide-clj.nvim 
-;; 
+;;
+;; The messagepack rpc message types
+;;
 
-;; (defn connect 
-;;   ([] (connect 7777))
-;;   
-;;   ([port]
-;;   (let [host "localhost"
-;;         port port
-;;         socket (java.net.Socket. host port)
-;;         istream (.getInputStream socket)
-;;         ostream (.getOutputStream socket)]
-;;     (.setTcpNoDelay socket true)
-;; 
-;;     {:input-stream istream
-;;      :output-stream ostream})))
+(def msgtype-request 0)
+(def msgtype-response 1)
+(def msgtype-notify 2)
 
-;; (defn start-repl []
-;;   (clojure.core.server/start-server 
-;;     {:address "localhost" :port 8888 :name "hide-neovim-repl" :accept 'clojure.core.server/repl})
-;;   )
+;;
+;; Records for nvim specific types. They can all be treated
+;; as integers according to https://neovim.io/doc/user/api.html#API,
+;; but they're not interchangable. For serialization and msgpack
+;; extention reasons, these are records here.
 
-(defn eval-func [func args]
-  (let [f (resolve (symbol func))]
-    (assert f (str "Unable to resolve " func))
-    (try
-      (apply f args)
-      (catch Exception e (log/error e)))))
+(defrecord Buffer [n])
+(defrecord Window [id])
+(defrecord Tabpage [handle])
 
-(defn event-loop [nvim-client input-stream output-stream]
-  (while true
-    (log/debug "waiting for message...")
+;;
+;; The msgpack extentions for Buffer, Window and Tabpage.
+;;
+(msgpack.macros/extend-msgpack
+  Buffer
+  0
+  [buffer] (msgpack/pack (:n buffer))
+  [bytes] (->Buffer (msgpack/unpack bytes)))
 
-    (when-let [msg (msgpack/unpack input-stream)]
-      (log/debug "->m " msg)
-      (let [[msg-type & msg-data] msg]
-        ; (log/debug "  msg-type:" msg-type)
-        (log/debug "  msg-data:" msg-data)
+(msgpack.macros/extend-msgpack
+  Window
+  1
+  [window] (msgpack/pack (:id window))
+  [bytes] (->Window (msgpack/unpack bytes)))
 
-        (case msg-type 
-          0 ; request
-          (let [[channel func args] msg-data]
+(msgpack.macros/extend-msgpack
+  Tabpage
+  2
+  [tabpage] (msgpack/pack (:handle tabpage))
+  [bytes] (->Tabpage (msgpack/unpack bytes)))
 
-            (throw (Exception. "Unsupported. Only notify is supported.")) 
-            (log/debug "  rpcrequest: ")
-            (log/debug "    channel: " channel)
-            (log/debug "    func: " func)
-            (log/debug "    args: " args)
-            (log/debug "    class args: " (class args))
-            (let [res (eval-func func (cons nvim-client args))]
-              (log/debug "res:" res)
+;;
+;; The lowest primitives when it comes to reading
+;; and writing to nvim.
+;;
 
-              (do 
-                ;; We really need to respond something, in order to 
-                ;; not hang neovim.
-                (let [response-msg [1 channel nil res] 
-                      packed (msgpack/pack response-msg)]
-                  (.write output-stream packed 0 (count packed))     
-                  (.flush output-stream)
-                  (log/debug "<-m " response-msg))))
-                  
-
-            #_(if-not (= func ":quit") 
-                (recur)
-                (log/debug "received :quit. Quitting.")))
-
-            
-
-          1 ; response
-          (let []
-            (log/debug "  rpcresponse: ")
-            (throw (Exception. "Not Yet Implemented.")))
-
-          2 ; notify
-          (let [[func args] msg-data]
-            (log/debug "type: " (class msg-data) (class (first msg-data)))
-            (log/debug "  rpcnotify: ")
-            (log/debug "    func: " func)
-            (log/debug "    args: " args)
-            (log/debug "    class args: " (class args))
-            (log/debug "<-m")
-
-            (eval-func func (cons nvim-client args))
-
-            #_(if-not (= func ":quit") 
-                (do (let [res (eval-func func (cons nvim-client args))]
-                      (log/debug "res: " res))
-                    (recur))
-                (log/info "received :quit. Quitting.")))
-
-          (throw (Exception. (str "Unsupported msg-type: " msg-type))))))))
-    
-  
-      
-
-(defn write-message [{:keys [output-stream]} msg]
-  (msgpack/pack-stream msg output-stream)
+(defn write-data
+  "Pack and write data to output-stream"
+  [output-stream data]
+  ;(prn "write: " data)
+  (msgpack/pack-stream data output-stream)
   (.flush output-stream))
 
-(defn read-message [{:keys [input-stream]}]
-  (msgpack/unpack input-stream))
+(defn read-data
+  "Read and unpack a raw message from input-stream"
+  [input-stream]
+  (let [data (msgpack/unpack input-stream)]
+    ;(prn "read: " data)
+    data))
 
-(defn send-msg [conn fn-name args]
-  (let [channel (:channel conn)
-        seq-num 1
-        msg [0 channel fn-name args]]
-    (write-message conn msg)))
+;;
+;; Sending requests and receiving responses.
+;;
 
-(defn recv-msg [conn]
-  (let [response-msg (read-message conn)]
-    (let [[msg-type msg-id _ msg] response-msg
-          [channel data] msg]
+(defn send-request
+  ([conn msg]
+   (send-request conn (:channel @conn) msg))
+
+  ([conn channel [fn-name args]]
+   (let [seq-num (:seq-num @conn)
+         msg [msgtype-request channel fn-name args]]
+     (swap! conn
+            #(-> %
+                 (update :seq-num inc)
+                 (update :messages conj msg)))
+     (write-data (:output-stream @conn) msg))))
+
+(defn recv-response [conn]
+  (let [response-msg (read-data (:input-stream @conn))]
+    (swap! conn update :messages conj response-msg)
+    (let [[msg-type msg-id _ msg] response-msg]
       msg)))
 
-(defn send-recv-msg [conn fn-name args]
-  (send-msg conn fn-name args)
-  (recv-msg conn))
-
-(defn send-notification [conn fn-name args]
-  (let [channel (:channel conn)
-        seq-num 1
-        msg [2 channel fn-name args]]
-    (write-message conn msg)))
-
-(defn nvim-get-current-buf [conn]
-  (send-recv-msg conn "nvim_get_current_buf" []))
-
-(defn nvim-get-api-info [conn]
-  (let [request-msg [0 1 "nvim_get_api_info" []]
-        _ (write-message conn request-msg)
-        response-msg (read-message conn)
-        [msg-type msg-id _ msg] response-msg
-        [channel api-info] msg]
-    [channel api-info]))
-
-(defn nvim-get-channel [conn]
-  (first (nvim-get-api-info conn)))
-
-(defn set-hide-channel-in-vim [conn channel]
-  (let [vim-command (format "let g:hide_channel = %d" channel)
-        request-msg [0 1 "nvim_command" [vim-command]]]
-    (write-message conn request-msg)
-    (read-message conn)))
-
-;; (defonce state (atom {}))
-;; 
-;; (defn conn [] (:conn @state))
-;; 
-;; (defn start 
-;;   ([] (start 7777))
-;;   ([port] (start "localhost" port))
-;;   ([host port]
-;;    (log/infof "Connecting to neovim at port %s:%d" host port)
-;; 
-;;    (let [conn (connect port)
-;;          nvim-client (nvim/client 1 host port) 
-;;          input-stream (:input-stream conn)
-;;          output-stream (:output-stream conn)
-;;          ]
-;; 
-;;      ;; Call nvim_get_api_info
-;;      ;; Channel is first argument in response
-;; 
-;;      (let [channel (nvim-get-channel conn)]
-;;        (set-hide-channel-in-vim conn channel)
-;;        (reset! state {:conn (assoc conn :channel channel)}))
-;; 
-;;      (async/thread-call (partial event-loop nvim-client input-stream output-stream))
-;;      )))
-;; 
-
-
-
+(defn call
+  ([conn msg]
+   (call conn (:channel @conn) msg))
+  ([conn channel msg]
+   (send-request conn msg)
+   (recv-response conn)))
 
