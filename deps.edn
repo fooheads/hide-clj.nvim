@@ -3,7 +3,7 @@
   ;                       :sha "edb780a695a58a90d05389fee5abff312cf6371c"
   ;fooheads/hide-clj {:local/root "/Users/nicke/w/fooheads/hide-clj"}}
   ;neovim-client {:mvn/version "0.1.2"}
-  ;org.exupero/neovim {:mvn/version "0.1.1-SNAPSHOT"}
+  org.exupero/neovim {:mvn/version "0.1.1-SNAPSHOT"}
   ;org.clojure/core.async {:mvn/version "0.3.442"}
   org.clojure/tools.logging {:mvn/version "0.3.1"}
   ;org.clojure/tools.namespace {:mvn/version "0.2.11"}
@@ -18,3 +18,4 @@
                 :sha "7c99712dedbb999895a9ee0983b73dd97dee92ca"}}
   
  :aliases {:hide {:main-opts ["-m" "fooheads.hide-nvim"]}}}
+
