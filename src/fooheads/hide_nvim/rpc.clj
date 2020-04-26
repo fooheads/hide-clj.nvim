@@ -50,7 +50,7 @@
 (defn write-data
   "Pack and write data to output-stream"
   [output-stream data]
-  ;(prn "write: " data)
+  (prn "write: " data)
   (msgpack/pack-stream data output-stream)
   (.flush output-stream))
 
@@ -58,7 +58,7 @@
   "Read and unpack a raw message from input-stream"
   [input-stream]
   (let [data (msgpack/unpack input-stream)]
-    ;(prn "read: " data)
+    (prn "read: " data)
     data))
 
 ;;

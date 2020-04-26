@@ -80,8 +80,11 @@
   "Returns the cursor (row,col), with the same (row,col) as
   is visual inside nvim."
   [connection]
+  (prn "get-cursor")
+  (prn"connection" connection)
   (let [current-win 0
         [row col] (rpc/call connection (n/win-get-cursor current-win))]
+    (prn "row" row "col" col)
     [row (+ col 1)]))
 
 (defn set-cursor
@@ -102,6 +105,7 @@
 (defn get-buffer
   "Returns the full current buffer as a single string."
   [connection]
+  (prn "get-buffer")
   (->> connection
       get-lines
       (clojure.string/join "\n")))
@@ -132,6 +136,13 @@
          (edit connection full-path)
          (set-cursor connection new-row new-col))
        (echo connection "Can't find source file")))))
+
+(defn get-namespace [connection]
+  (prn "get-namespace")
+  (let [code (get-buffer connection)
+
+        [row col] (get-cursor connection)]
+    (hn/get-namespace code row col)))
 
 
 

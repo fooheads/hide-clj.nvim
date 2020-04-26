@@ -157,6 +157,18 @@
          (set-hide-channel-in-vim connection)))
      (println "Can't find hide port. Can't start properly."))))
 
+;; TODO
+;; - Stäng av automatiskt namespace
+;; - Robust uppstart
+;; - Funktioner för att titta i connectionen (för stor annars)
+;; - Vid exception, resetta state
+;; - Rensa upp
+;; - Endast kända funktioner anropas
+;; - Kolla signaturer på anrop och svar
+;; - Om signatur inte stämmer, resetta state
+;; - Evaluera kod
+;; - Öppna REPL log
+;; - Output till REPL log
 
 (defn stop []
   (println "Client stopping"))
@@ -173,10 +185,12 @@
 
 (defn eval-func [func args]
   (let [f (resolve (symbol func))]
-    (assert f (str "Unable to resolve " func))
-    (try
-      (apply f args)
-      (catch Exception e (log/error e)))))
+    ;(assert f (str "Unable to resolve " func))
+    (if f
+      (try
+        (apply f args)
+        (catch Exception e (log/error e)))
+      (prn "unknown func:" f (rest args)))))
 
 (defn event-loop [channel connection]
   (let [quit? (atom false)]
@@ -185,55 +199,59 @@
         (Thread/sleep 100)
         ;(log/debug "waiting for message...")
 
-        (if-let [msg (async/poll! channel)]
-          (if (= "quit" msg)
-            (do
-              (println "QUITTING!!!")
-              (reset! quit? true))
-              ;(async/>! channel "QUITTING!"))
-            (do
-              (prn "FROM HIDE: " msg)
-              (println "Sending to nvim")
-              ;(send-msg' connection ["nvim_get_current_line" []])
-              ;(send-msg' connection "nvim_get_current_line" [])
-              (rpc/call connection msg)
-              (println "Done sending to nvim"))))
-              ;(async/>! channel ""))))
+        (try
+          (if-let [msg (async/poll! channel)]
+              (if (= "quit" msg)
+                (do
+                  (println "QUITTING!!!")
+                  (reset! quit? true))
+                  ;(async/>! channel "QUITTING!"))
+                (do
+                  (prn "FROM HIDE: " msg)
+                  (println "Sending to nvim")
+                  ;(send-msg' connection ["nvim_get_current_line" []])
+                  ;(send-msg' connection "nvim_get_current_line" [])
+                  (rpc/call connection msg)
+                  (println "Done sending to nvim"))))
+                ;(async/>! channel ""))))
 
-        (if (> (.available (:input-stream @connection)) 0)
-          (when-let [msg (msgpack/unpack (:input-stream @connection))]
-            (swap! connection update :messages conj msg)
-            ;(log/debug "->m " msg)
+          (if (> (.available (:input-stream @connection)) 0)
+            (when-let [msg (msgpack/unpack (:input-stream @connection))]
+              (swap! connection update :messages conj msg)
+              ;(log/debug "->m " msg)
 
-            (let [[msg-type & msg-data] msg]
-              ; (log/debug "  msg-type:" msg-type)
-              ; (log/debug "  msg-data:" msg-data)
+              (let [[msg-type & msg-data] msg]
+                ; (log/debug "  msg-type:" msg-type)
+                ; (log/debug "  msg-data:" msg-data)
 
-              (case msg-type
+                (case msg-type
 
-                msgtype-request
-                (let [[channel func args] msg-data]
-                  (throw (Exception. "Unsupported. Only notify is supported.")))
+                  0
+                  (let [[channel func args] msg-data]
+                    (throw (Exception. "Unsupported. Only notify is supported.")))
 
-                msgtype-response
-                (let []
-                  (log/debug "  rpcresponse: ")
-                  (throw (Exception. "Not Yet Implemented.")))
+                  1
+                  (let []
+                    (log/debug "  rpcresponse: "))
+                    ;(throw (Exception. "Not Yet Implemented.")))
 
-                2 ; rpc/msgtype-notify
-                (let [[func args] msg-data]
+                  2 ; rpc/msgtype-notify
+                  (let [[func args] msg-data]
 
-                  ;(prn "NOTIFIED: " "func" func "args" args "msg-data" msg-data)
-                  (eval-func func (cons connection args))
+                    ;(prn "NOTIFIED: " "func" func "args" args "msg-data" msg-data)
+                    (eval-func func (concat [connection] args))
 
-                  #_(if-not (= func ":quit")
-                      (do (let [res (eval-func func (cons nvim-client args))]
-                            (log/debug "res: " res))
-                          (recur))
-                      (log/info "received :quit. Quitting.")))
+                    #_(if-not (= func ":quit")
+                        (do (let [res (eval-func func (cons nvim-client args))]
+                              (log/debug "res: " res))
+                            (recur))
+                        (log/info "received :quit. Quitting.")))
 
-                (throw (Exception. (str "Unsupported msg-type: " msg-type))))))))
-          ;(println "Nothing available"))))
+                  (throw (Exception. (str "Unsupported msg-type: " msg-type)))))))
+          (catch Throwable e
+            (println "EXCEPTION!" e)
+            (prn (ex-data e)))))
+            ;(println "Nothing available"))))
       (println "Exiting event-loop!"))))
 
 
@@ -271,15 +289,26 @@
     (async/>!! echo-chan message)
     (async/<!! echo-chan))
 
+  (map inc [1 2 3])
 
   ;; STARTING POINT
   (async/>!! echo-chan "quit")
   (start "localhost" 50433)
-  (start "localhost" 52243)
+  (start "localhost" 60289)
+  (start)
 
   (def echo-chan (async/chan))
   (event-loop echo-chan connection)
 
+  (async/>!! echo-chan ["nvim_subscribe" ["BufEnter"]])
+  (async/>!! echo-chan ["nvim_buf_attach" [0 false []]])
+  (async/>!! echo-chan ["nvim_buf_detach" [0]])
+
+
+  (rpc/read-data (:input-stream @connection))
+
+  (swap! connection assoc :messages [])
+  (count (:messages @connection))
   (do
     (show connection)
     (let [message ["nvim_get_current_buf" []]]
@@ -290,6 +319,7 @@
         (async/>!! echo-chan message))
       (show connection)))
 
+  ; hej
   (:api-info @state)
   (log/debug "Hej")
   (set-hide-channel-in-vim (:connection @state) (:channel (:connection @state)))
@@ -336,6 +366,7 @@
   (def channel (first api-info))
   (def api (second api-info))
 
+  (+ 1)
 
   (->> api-data (take 3))
   (-> api-data (nth 3) (nth 0))
