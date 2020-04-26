@@ -9,7 +9,19 @@
 
 (def msgtype-request 0)
 (def msgtype-response 1)
-(def msgtype-notify 2)
+(def msgtype-notification 2)
+
+(defn msgtype-request? [v]
+  (= msgtype-request v))
+
+(defn msgtype-response? [v]
+  (= msgtype-response v))
+
+(defn msgtype-notification? [v]
+  (= msgtype-notification v))
+
+(defn msgtype? [v]
+  ((some-fn msgtype-request? msgtype-response? msgtype-notification?) v))
 
 ;;
 ;; Records for nvim specific types. They can all be treated
@@ -81,7 +93,7 @@
 (defn recv-response [conn]
   (let [response-msg (read-data (:input-stream @conn))]
     (swap! conn update :messages conj response-msg)
-    (let [[msg-type msg-id _ msg] response-msg]
+    (let [[msgtype msg-id _ msg] response-msg]
       msg)))
 
 (defn call

@@ -1,4 +1,5 @@
-{:deps
+{:paths ["src" "test"]
+ :deps
  {;fooheads/hide-clj {:git/url "git@github.com:fooheads/hide-clj"
   ;                       :sha "edb780a695a58a90d05389fee5abff312cf6371c"
   fooheads/hide-clj {:local/root "/Users/nicke/w/fooheads/hide-clj"}
@@ -16,6 +17,6 @@
   ;mvxcvi/puget {:mvn/version "1.2.0"}
   mvxcvi/puget {:git/url "https://github.com/fooheads/puget.git"
                 :sha "7c99712dedbb999895a9ee0983b73dd97dee92ca"}}
-  
+
  :aliases {:hide {:main-opts ["-m" "fooheads.hide-nvim"]}}}
 

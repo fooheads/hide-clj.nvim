@@ -10,7 +10,39 @@
      and events from nvim."
 
   (:require
+    [clojure.spec.alpha :as s]
     [fooheads.hide-nvim.rpc :as rpc]))
+
+(s/def :nvim/msgtype-request rpc/msgtype-request?)
+(s/def :nvim/msgtype-response rpc/msgtype-response?)
+(s/def :nvim/msgtype-notification rpc/msgtype-notification?)
+(s/def :nvim/msgtype rpc/msgtype?)
+
+(s/def :nvim/fn-args vector?)
+(s/def :nvim/fn-name string?)
+(s/def :nvim/fn-call (s/tuple :nvim/fn-name :nvim/fn-args))
+
+(s/def :nvim/request-msg-data :nvim/fn-call)
+(s/def :nvim/response-msg-data vector?)
+(s/def :nvim/notification-msg-data :nvim/fn-call)
+
+(s/def :nvim/request-msg
+  (s/cat :msgtype :nvim/msgtype-request
+         :msg-data :nvim/request-msg-data))
+
+(s/def :nvim/response-msg
+  (s/cat :msgtype :nvim/msgtype-response
+         :msg-data :nvim/response-msg-data))
+
+(s/def :nvim/notification-msg
+  (s/cat :msgtype :nvim/msgtype-notification
+         :msg-data :nvim/notification-msg-data))
+
+(s/def :nvim/msg
+  (s/or :msg :nvim/request-msg
+        :msg :nvim/response-msg
+        :msg :nvim/notification-msg))
+
 
 (defn- get-channel
   "Calls nvim to get the channel. This call also returns
@@ -18,7 +50,7 @@
   [istream ostream]
   (rpc/write-data ostream [0 1 "nvim_get_api_info" []])
   (let [response-msg (rpc/read-data istream)
-        [msg-type msg-id _ msg] response-msg
+        [msgtype msg-id _ msg] response-msg
         [channel api-info] msg]
     channel))
 
@@ -44,12 +76,26 @@
   :input-stream"
   (> (.available (:input-stream @connection)) 0))
 
-(defn send-request
-  "Sends a message over the connection."
+(defn send-message
+  "Sends a message over the connection. The msgtype must
+  be a rpc/msgtype-request or a rpc/mes"
   [connection msg]
+  {:pre [(s/valid? :nvim/msg msg)]}
+
   (let [channel (:channel @connection)
         ostream (:output-stream @connection)
-        [fn-name args] msg
+        [msgtype fn-name args] msg
+        msg [msgtype channel fn-name args]]
+    (rpc/write-data ostream msg)))
+
+(defn send-request
+  "Sends a request message over the connection."
+  [connection request-msg-data]
+  {:pre [(s/valid? :nvim/request-msg-data request-msg-data)]}
+
+  (let [channel (:channel @connection)
+        ostream (:output-stream @connection)
+        [fn-name args] request-msg-data
         msg [rpc/msgtype-request channel fn-name args]]
     (rpc/write-data ostream msg)))
 
@@ -57,10 +103,11 @@
   "Receives a response message over the connection. Will block
   until there is a message."
   [connection]
+  {:post [(s/valid? :nvim/response-msg-data %)]}
   (let [response-msg (rpc/read-data (:input-stream @connection))]
-    (let [[msg-type msg-id _ msg] response-msg]
-      (if (= rpc/msgtype-response msg-type)
-        msg
+    (let [[msgtype msg-id _ msg-data] response-msg]
+      (if (= rpc/msgtype-response msgtype)
+        msg-data
         (throw (ex-info "Received a message that was not a response message!"
                        {:response-message response-msg}))))))
 
@@ -68,6 +115,7 @@
   "Receives a response message over the connection. Will block
   until there is a message."
   [connection & options]
+  {:post [(s/valid? :nvim/response-msg-data %)]}
   (let [options (merge options {:timeout-ms 3000})
         max-time (:timeout-ms options)]
     (loop [time-elapsed 0]
@@ -84,9 +132,12 @@
 (defn call
   "Sends a request and waits for the response. Returns the
   response"
-  ([connection  msg]
-   (send-request connection msg)
-   (receive-response connection)))
+  [connection request-msg-data]
+  {:pre [(s/valid? :nvim/request-msg-data request-msg-data)]
+   :post [(s/valid? :nvim/response-msg-data %)]}
+
+  (send-request connection request-msg-data)
+  (receive-response connection))
 
 (comment
 
@@ -101,7 +152,20 @@
   (do
     (rpc/write-data (:output-stream @cc)
                     [0 (:channel @cc) "nvim_buf_line_count" [0]])
-    (rpc/read-data (:input-stream @cc))))
+    (rpc/read-data (:input-stream @cc)))
+
+  ;;
+  ;; Specs
+  ;;
+  (s/conform :nvim/msg [0 "foo" ["bar"]])
+  (s/conform :nvim/request-msg [0 "foo" ["bar"]])
+  (s/conform :nvim/msg [3 "foo" ["bar"]])
+  (s/explain :nvim/msg [3 "foo" ["bar"]])
+
+  ;; not valid
+  (s/conform :nvim/msg [0 "foo"])
+  (s/conform :nvim/msg [3 "foo" ["bar"]]))
+
 
 
 
