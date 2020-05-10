@@ -3,7 +3,6 @@
  {
   fooheads/hide-clj {:git/url "https://github.com/fooheads/hide-clj.git"
                          :sha "f5bdf9e978376cd6e8c8a6b57b4af5c326253173"}
-  ;fooheads/hide-clj {:local/root "/Users/nicke/w/fooheads/hide-clj"}
   clojure-msgpack {:mvn/version "1.2.0"}
   mvxcvi/puget {:mvn/version "1.2.0"}
   org.clojure/core.async {:mvn/version "1.1.587"}}
