@@ -1,119 +1,104 @@
 (ns fooheads.hide-nvim.client
-  (:require [fooheads.hide-nvim.rpc :as rpc]
-            [neovim.core :as nvim]))
+  (:require
+    [clojure.core.async :as async]
+    [clojure.edn :as edn]
+    [fooheads.hide-nvim.connection :as c]))
 
-(defn closeable
-  ([value] (closeable value identity))
-  ([value close] 
-   (reify
-     clojure.lang.IDeref
-     (deref [_] value)
-     java.io.Closeable
-     (close [_] (if (future? value)
-                  (future-cancel value)
-                  (close value))))))
+(defn- event-loop [channel connection]
+  (let [quit? (atom false)]
+    (async/go
+      (while (not @quit?)
+        (Thread/sleep 100)
 
+        (try
+          (if-let [msg (async/poll! channel)]
+            (if (= "quit" msg)
+              (reset! quit? true)))
 
-(defn make-connection
-  [host port]
-  (let [socket (java.net.Socket. host port)
-        istream (.getInputStream socket)
-        ostream (.getOutputStream socket)]
-    (.setTcpNoDelay socket true)
+          (if (c/data-available? connection)
+            (let [msg (c/receive-message-blocking connection)]
+              (prn "msg" msg)
+              (case (:type msg)
+                :notification-msg
+                (prn "func" (:method msg) "args" (:params msg))
+                (throw (Exception. (str "Unsupported msg-type: " (:type msg)))))))
 
-    {:socket socket
-     :input-stream istream
-     :output-stream ostream}))
+          (catch Throwable e
+            (println "EXCEPTION!" e)
+            (prn (ex-data e))
+            (reset! quit? true))))
+            ;(println "Nothing available"))))
+      (async/close! channel)
+      (println "Quitting - exiting event-loop!"))))
 
+(defn exec [client method params]
+  (let [connection (:command-connection @client)]
+    (c/call connection method params)))
 
-;;(defn make-connection [host port]
-;;  {:input-stream :da-input-stream
-;;   :output-stream :da-output-stream})
+(defn set-hide-channel-in-vim [connection hide-channel]
+  (let [vim-command (format "let g:hide_channel = %d" hide-channel)]
+    (c/call connection "nvim_command" [vim-command])))
 
-(defn make-event-loop [nvim-client connection]
-  ;(future (while true (println "Alive") (Thread/sleep 5000)))
-  (rpc/event-loop 
-    nvim-client 
-    (:input-stream connection)
-    (:output-stream connection)))
-
-(defn my-system [host port]
-  (fn [do-with-state]
-    (with-open [connection (closeable (make-connection host port) (fn [conn] (.close (:socket conn))))
-                nvim-client (closeable (nvim/client 1 host port)) 
-                channel (rpc/nvim-get-channel @connection)
-                _ (rpc/set-hide-channel-in-vim @connection channel)
-                event-loop (future (make-event-loop @nvim-client @connection))]
-
-      (do-with-state {:connection @connection
-                      :event-loop @event-loop}))))
-
-
-      
-
-(def with-my-system (my-system "localhost" 7778))
-
-(defn await-event-loop [state]
-  ; (deref (:event-loop state))
-  (println "AWAIT EVENT LOOP DONE"))
-  
-
-
-;(with-my-system await-event-loop)
-
-
-
-(def init (atom #(throw (ex-info "init not set" {}))))
-
-(defn publishing-state [do-with-state target-atom]
-  #(do (reset! target-atom %)
-       (try (do-with-state %)
-            (finally (reset! target-atom nil)))))
-
-(def state (atom nil))
-
-
-; Configure
-(reset! init #(with-my-system (-> await-event-loop
-                                  (publishing-state state))))
-
-(def instance (atom (future ::never-run)))
-
-
-(defn start []
-  (swap! instance #(if (realized? %)
-                     (future-call @init)
-                     (throw (ex-info "already running" {})))))
-
-(defn stop []
-  (let [instance-future @instance]
-    (future-cancel instance-future)
-    (try @instance-future
-         (catch java.util.concurrent.CancellationException _ :stopped))))
-
-(defn reset 
-  ([client] (reset)) 
+(defn start
   ([]
-   (stop)
-   (clojure.tools.namespace.repl/refresh :after 'fooheads.hide-nvim.client/start)))
+   (let [host "localhost"
+         port-str (or (System/getenv "HIDE_PORT")
+                      (try (slurp ".hide-port") (catch Exception e nil)))
+         port (edn/read-string port-str)]
+     (if port
+       (start host port)
+       (println "Can't find hide port in env HIDE_PORT or in file .hide-port. Can't start properly."))))
+
+  ([host port]
+   (if port
+     (do
+       (println "Client starting")
+       (let [command-connection (c/create-connection host port)
+             event-connection (c/create-connection host port)
+             event-channel (async/chan)
+             vim-hide-channel (:channel @event-connection)]
+
+         (event-loop event-channel event-connection)
+         (set-hide-channel-in-vim command-connection vim-hide-channel)
+
+         (atom
+           {:command-connection command-connection
+            :event-connection event-connection
+            :event-channel event-channel})))
+     (println "Can't find hide port. Can't start properly."))))
+
+(defn stop
+  [client]
+  (async/>!! (:event-channel @client) "quit"))
+
+(comment
+  (def client (start "localhost" 7777))
+
+  (exec client "nvim_get_current_line" [])
+  (exec client "nvim_command" [":echo 'testing2'"])
+
+  (stop client))
+
+  ;; TODO: next steps
+  ;; 
+  ;; - commit
+  ;; - map vim notifications to commands/functions
+  ;; - queue? or execute on the event-log thread?
+  ;; - client message log
+  ;; - cleanup all unused code and dependencies
+  ;; - move config / vim mappings to hide config
+  ;; - make sure puget colors and stuff gets used
+  ;;
+  ;; - K - docs
+  ;; - gd - goto definition
+  ;; - evaluate top form inside a (comment)
+  ;; 
+  ;; - document keyboard commands in README
+  ;;
+  ;; - repl window
+  ;; - send evals through hide.nvim
 
 
 
-; Run
-;(def instance (future-call @init))
 
-; (start)
-; 
-; @state
-; 
-; (stop)
-; 
-; 
-; ; Stop
-; (future-cancel instance)
-; @instance
-; 
-; (def event-loop (make-event-loop {}))
-; (deref event-loop)
-; (future-cancel event-loop)
-; (realized? event-loop)
+

@@ -1,27 +1,9 @@
 (ns fooheads.hide-nvim.rpc
+  "This namespace deals with writing and reading from streams
+  using msgpack"
   (:require [clojure.tools.logging :as log]
             [msgpack.clojure-extensions]
             [msgpack.core :as msgpack]))
-
-;;
-;; The messagepack rpc message types
-;;
-
-(def msgtype-request 0)
-(def msgtype-response 1)
-(def msgtype-notification 2)
-
-(defn msgtype-request? [v]
-  (= msgtype-request v))
-
-(defn msgtype-response? [v]
-  (= msgtype-response v))
-
-(defn msgtype-notification? [v]
-  (= msgtype-notification v))
-
-(defn msgtype? [v]
-  ((some-fn msgtype-request? msgtype-response? msgtype-notification?) v))
 
 ;;
 ;; Records for nvim specific types. They can all be treated
@@ -77,29 +59,29 @@
 ;; Sending requests and receiving responses.
 ;;
 
-(defn send-request
-  ([conn msg]
-   (send-request conn (:channel @conn) msg))
-
-  ([conn channel [fn-name args]]
-   (let [seq-num (:seq-num @conn)
-         msg [msgtype-request channel fn-name args]]
-     (swap! conn
-            #(-> %
-                 (update :seq-num inc)
-                 (update :messages conj msg)))
-     (write-data (:output-stream @conn) msg))))
-
-(defn recv-response [conn]
-  (let [response-msg (read-data (:input-stream @conn))]
-    (swap! conn update :messages conj response-msg)
-    (let [[msgtype msg-id _ msg] response-msg]
-      msg)))
-
-(defn call
-  ([conn msg]
-   (call conn (:channel @conn) msg))
-  ([conn channel msg]
-   (send-request conn msg)
-   (recv-response conn)))
-
+;; (defn send-request
+;;   ([conn msg]
+;;    (send-request conn (:channel @conn) msg))
+;; 
+;;   ([conn channel [fn-name args]]
+;;    (let [seq-num (:seq-num @conn)
+;;          msg [msgtype-request channel fn-name args]]
+;;      (swap! conn
+;;             #(-> %
+;;                  (update :seq-num inc)
+;;                  (update :messages conj msg)))
+;;      (write-data (:output-stream @conn) msg))))
+;; 
+;; (defn recv-response [conn]
+;;   (let [response-msg (read-data (:input-stream @conn))]
+;;     (swap! conn update :messages conj response-msg)
+;;     (let [[msgtype msg-id _ msg] response-msg]
+;;       msg)))
+;; 
+;; (defn call
+;;   ([conn msg]
+;;    (call conn (:channel @conn) msg))
+;;   ([conn channel msg]
+;;    (send-request conn msg)
+;;    (recv-response conn)))
+;; 

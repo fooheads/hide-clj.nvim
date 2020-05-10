@@ -11,38 +11,8 @@
 
   (:require
     [clojure.spec.alpha :as s]
+    [fooheads.hide-nvim.msg :as msg]
     [fooheads.hide-nvim.rpc :as rpc]))
-
-(s/def :nvim/msgtype-request rpc/msgtype-request?)
-(s/def :nvim/msgtype-response rpc/msgtype-response?)
-(s/def :nvim/msgtype-notification rpc/msgtype-notification?)
-(s/def :nvim/msgtype rpc/msgtype?)
-
-(s/def :nvim/fn-args vector?)
-(s/def :nvim/fn-name string?)
-(s/def :nvim/fn-call (s/tuple :nvim/fn-name :nvim/fn-args))
-
-(s/def :nvim/request-msg-data :nvim/fn-call)
-(s/def :nvim/response-msg-data vector?)
-(s/def :nvim/notification-msg-data :nvim/fn-call)
-
-(s/def :nvim/request-msg
-  (s/cat :msgtype :nvim/msgtype-request
-         :msg-data :nvim/request-msg-data))
-
-(s/def :nvim/response-msg
-  (s/cat :msgtype :nvim/msgtype-response
-         :msg-data :nvim/response-msg-data))
-
-(s/def :nvim/notification-msg
-  (s/cat :msgtype :nvim/msgtype-notification
-         :msg-data :nvim/notification-msg-data))
-
-(s/def :nvim/msg
-  (s/or :msg :nvim/request-msg
-        :msg :nvim/response-msg
-        :msg :nvim/notification-msg))
-
 
 (defn- get-channel
   "Calls nvim to get the channel. This call also returns
@@ -69,6 +39,7 @@
       {:socket socket
        :input-stream istream
        :output-stream ostream
+       :msgid 300
        :channel (get-channel istream ostream)})))
 
 (defn data-available? [connection]
@@ -76,46 +47,64 @@
   :input-stream"
   (> (.available (:input-stream @connection)) 0))
 
-(defn send-message
-  "Sends a message over the connection. The msgtype must
-  be a rpc/msgtype-request or a rpc/mes"
-  [connection msg]
-  {:pre [(s/valid? :nvim/msg msg)]}
-
-  (let [channel (:channel @connection)
-        ostream (:output-stream @connection)
-        [msgtype fn-name args] msg
-        msg [msgtype channel fn-name args]]
-    (rpc/write-data ostream msg)))
-
 (defn send-request
   "Sends a request message over the connection."
-  [connection request-msg-data]
-  {:pre [(s/valid? :nvim/request-msg-data request-msg-data)]}
+  [connection method params]
 
-  (let [channel (:channel @connection)
-        ostream (:output-stream @connection)
-        [fn-name args] request-msg-data
-        msg [rpc/msgtype-request channel fn-name args]]
+  (let [ostream (:output-stream @connection)
+        msgid (:msgid @connection)
+        msg (s/unform ::msg/request-msg 
+                      {:type msg/request :msgid msgid :method method :params params})]
+    (assert (s/valid? ::msg/request-msg msg))
+    (swap! connection update :msgid inc)
     (rpc/write-data ostream msg)))
 
-(defn receive-response-blocking
-  "Receives a response message over the connection. Will block
-  until there is a message."
+(defn send-notification
+  "Sends a notification message over the connection."
+  [connection method params]
+
+  (let [ostream (:output-stream @connection)
+        msg (s/unform ::msg/notification-msg 
+                      {:type msg/notification :method method :params params})]
+    (assert (s/valid? ::msg/notification-msg msg))
+    (rpc/write-data ostream msg)))
+
+(defn receive-message-blocking
+  "Receives a message over the connection. Will block until there is 
+  a message. Returns a conformed message or throws an exception if the 
+  message is non conformant."
   [connection]
-  {:post [(s/valid? :nvim/response-msg-data %)]}
-  (let [response-msg (rpc/read-data (:input-stream @connection))]
-    (let [[msgtype msg-id _ msg-data] response-msg]
-      (if (= rpc/msgtype-response msgtype)
-        msg-data
-        (throw (ex-info "Received a message that was not a response message!"
-                       {:response-message response-msg}))))))
+  (let [msg (rpc/read-data (:input-stream @connection))]
+        ;conformed-msg (s/conform ::msg/msg msg)]
+    (if (s/valid? ::msg/msg msg)
+      (let [[msg-type msg] (s/conform ::msg/msg msg)]
+        (assoc msg :type msg-type))
+      (throw (ex-info "Received an unknown message!" {:msg msg})))))
+
+(defn receive-response-blocking
+  "Receives a response message over the connection. Will block until there is 
+  a message. Returns a conformed response message or throws an exception if the 
+  message is non conformant."
+  [connection]
+  (let [msg (rpc/read-data (:input-stream @connection))
+        conformed-msg (s/conform ::msg/response-msg msg)]
+    (if-not (s/valid? ::msg/response-msg msg)
+      (throw (ex-info "Received an message that was not a response message!" {:msg msg})))
+
+    ;; Error types: 0 - Exception, 1 - Validation (see: nvim_get_api_info)
+    (let [error (:error conformed-msg)
+          result (:result conformed-msg)]
+      (if error
+        (let [error-msg (second error)]
+          (throw (ex-info error-msg {:msg msg :conformed-msg conformed-msg})))
+        result))))
+
 
 (defn receive-response
-  "Receives a response message over the connection. Will block
-  until there is a message."
+  "Receives a response message over the connection. Will timeout
+  if there is no message present in (default) 3000 ms. :timeout-ms
+  can be set in options."
   [connection & options]
-  {:post [(s/valid? :nvim/response-msg-data %)]}
   (let [options (merge options {:timeout-ms 3000})
         max-time (:timeout-ms options)]
     (loop [time-elapsed 0]
@@ -129,42 +118,63 @@
                           {:connection connection
                            :options options})))))))
 
-(defn call
-  "Sends a request and waits for the response. Returns the
-  response"
-  [connection request-msg-data]
-  {:pre [(s/valid? :nvim/request-msg-data request-msg-data)]
-   :post [(s/valid? :nvim/response-msg-data %)]}
 
-  (send-request connection request-msg-data)
+(defn receive-with-timeout
+  "Receives a response message over the connection. Will timeout
+  if there is no message present in (default) 3000 ms. :timeout-ms
+  can be set in options."
+  [receive-func connection & options]
+  (let [options (merge options {:timeout-ms 3000})
+        max-time (:timeout-ms options)]
+    (loop [time-elapsed 0]
+      (if (data-available? connection)
+        (receive-func connection)
+        (if (< time-elapsed max-time)
+          (let [sleep-time 100]
+            (Thread/sleep sleep-time)
+            (recur (+ time-elapsed sleep-time)))
+          (throw (ex-info "Timeout receiving response"
+                          {:connection connection
+                           :options options})))))))
+
+
+(def receive-message (partial receive-with-timeout receive-message-blocking))
+(def receive-response (partial receive-with-timeout receive-response-blocking))
+
+
+(defn call
+  "Sends a request and waits for the response. Returns the response"
+  [connection method params]
+  (send-request connection method params)
   (receive-response connection))
 
 (comment
 
-  (def cc (create-connection "localhost" 50433))
+  (prn (deref cc))
+  (def cc (create-connection "localhost" 7777))
 
   (do
-    (send-request cc ["nvim_buf_line_count" [0]])
+    (send-request cc "nvim_buf_line_count" [0])
+    (receive-message-blocking cc))
+
+  (do
+    (send-request cc "nvim_buf_line_count" [0])
     (receive-response cc))
 
-  (call cc ["nvim_buf_line_count" [0]])
+  (do
+    (send-request cc "nvim_buf_get_lines" [0 0 10 false])
+    (receive-response cc))
 
   (do
-    (rpc/write-data (:output-stream @cc)
-                    [0 (:channel @cc) "nvim_buf_line_count" [0]])
-    (rpc/read-data (:input-stream @cc)))
+    (send-request cc "hihi_nvim_buf_line_count_hihi" [0])
+    (receive-response cc))
 
-  ;;
-  ;; Specs
-  ;;
-  (s/conform :nvim/msg [0 "foo" ["bar"]])
-  (s/conform :nvim/request-msg [0 "foo" ["bar"]])
-  (s/conform :nvim/msg [3 "foo" ["bar"]])
-  (s/explain :nvim/msg [3 "foo" ["bar"]])
+  (do
+    (send-request cc 19 [0])
+    (receive-response cc))
 
-  ;; not valid
-  (s/conform :nvim/msg [0 "foo"])
-  (s/conform :nvim/msg [3 "foo" ["bar"]]))
+  (call cc "nvim_buf_line_count" [0]))
+
 
 
 

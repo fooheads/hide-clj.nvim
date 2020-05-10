@@ -14,9 +14,20 @@
 
   clojure-msgpack {:mvn/version "1.2.0"}
 
-  ;mvxcvi/puget {:mvn/version "1.2.0"}
-  mvxcvi/puget {:git/url "https://github.com/fooheads/puget.git"
-                :sha "7c99712dedbb999895a9ee0983b73dd97dee92ca"}}
+  mvxcvi/puget {:mvn/version "1.2.0"}}
+  ;mvxcvi/puget {:git/url "https://github.com/fooheads/puget.git"
+  ;              :sha "7c99712dedbb999895a9ee0983b73dd97dee92ca"}}
 
- :aliases {:hide {:main-opts ["-m" "fooheads.hide-nvim"]}}}
+ :aliases 
+ {:hide {:main-opts ["-m" "fooheads.hide-nvim"]}
 
+  :test {:extra-paths ["test/src"]
+         :extra-deps 
+         {lambdaisland/kaocha {:mvn/version "0.0-573"}
+          lambdaisland/kaocha-junit-xml {:mvn/version "0.0-70"}}
+
+         :main-opts  ["-m" "kaocha.runner" 
+                      "--plugin" "capture-output" 
+                      "--plugin" "junit-xml" 
+                      "--junit-xml-file" "test-results/kaocha/unit-test-result.xml"]}}}
+        

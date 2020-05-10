@@ -1,9 +1,8 @@
-(ns fooheads.hide-nvim.connection-test
+(ns fooheads.hide-nvim.msg-test
   (:require
     [clojure.spec.alpha :as s]
     [clojure.test :refer :all]
-    [fooheads.hide-nvim.connection :refer :all]
-    [fooheads.hide-nvim.rpc :as rpc]))
+    [fooheads.hide-nvim.msg :refer :all]))
 
 (def msg-data ["fname" ["arg1" "arg2"]])
 
@@ -105,4 +104,5 @@
   ; (is (false? (s/valid? :nvim/msg [3 "fname" ["arg1" "arg2"]]))))
 
   ; ;(is (true? (s/valid? :nvim/request-msg [0 msg-data])))))
+
 
