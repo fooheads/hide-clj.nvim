@@ -26,11 +26,11 @@
 
           (if (c/data-available? connection)
             (let [msg (c/receive-message-blocking connection)]
-              (prn "event-loop: msg" msg)
+              ;(prn "event-loop: msg" msg)
               (case (:type msg)
                 :notification-msg
                 (do
-                  (prn "event-loop: " "func" (:method msg) "args" (:params msg))
+                  ;(prn "event-loop: " "func" (:method msg) "args" (:params msg))
                   (execute-command connection (:method msg) (:params msg)))
 
                 (throw (Exception. (str "Unsupported msg-type: " (:type msg)))))))

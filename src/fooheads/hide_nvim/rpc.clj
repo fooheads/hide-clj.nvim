@@ -1,9 +1,9 @@
 (ns fooheads.hide-nvim.rpc
   "This namespace deals with writing and reading from streams
   using msgpack"
-  (:require [clojure.tools.logging :as log]
-            [msgpack.clojure-extensions]
-            [msgpack.core :as msgpack]))
+  (:require
+    [msgpack.clojure-extensions]
+    [msgpack.core :as msgpack]))
 
 ;;
 ;; Records for nvim specific types. They can all be treated

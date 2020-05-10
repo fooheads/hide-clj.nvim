@@ -1,33 +1,23 @@
 {:paths ["src" "test"]
  :deps
- {;fooheads/hide-clj {:git/url "git@github.com:fooheads/hide-clj"
-  ;                       :sha "edb780a695a58a90d05389fee5abff312cf6371c"
-  fooheads/hide-clj {:local/root "/Users/nicke/w/fooheads/hide-clj"}
-  ;neovim-client {:mvn/version "0.1.2"}
-  org.exupero/neovim {:mvn/version "0.1.1-SNAPSHOT"}
-  ;org.clojure/core.async {:mvn/version "0.3.442"}
-  org.clojure/tools.logging {:mvn/version "0.3.1"}
-  ;org.clojure/tools.namespace {:mvn/version "0.2.11"}
-  ;log4j/log4j {:mvn/version "1.2.17"} ; :exclusions [javax.mail/mail
-  ;clj-logging-config {:mvn/version "1.9.12"}
-  ;uk.co.caprica/juds {:mvn/version "0.94.1"}
-
+ {
+  fooheads/hide-clj {:git/url "https://github.com/fooheads/hide-clj.git"
+                         :sha "f5bdf9e978376cd6e8c8a6b57b4af5c326253173"}
+  ;fooheads/hide-clj {:local/root "/Users/nicke/w/fooheads/hide-clj"}
   clojure-msgpack {:mvn/version "1.2.0"}
+  mvxcvi/puget {:mvn/version "1.2.0"}
+  org.clojure/core.async {:mvn/version "1.1.587"}}
 
-  mvxcvi/puget {:mvn/version "1.2.0"}}
-  ;mvxcvi/puget {:git/url "https://github.com/fooheads/puget.git"
-  ;              :sha "7c99712dedbb999895a9ee0983b73dd97dee92ca"}}
-
- :aliases 
+ :aliases
  {:hide {:main-opts ["-m" "fooheads.hide-nvim"]}
 
   :test {:extra-paths ["test/src"]
-         :extra-deps 
+         :extra-deps
          {lambdaisland/kaocha {:mvn/version "0.0-573"}
           lambdaisland/kaocha-junit-xml {:mvn/version "0.0-70"}}
 
-         :main-opts  ["-m" "kaocha.runner" 
-                      "--plugin" "capture-output" 
-                      "--plugin" "junit-xml" 
+         :main-opts  ["-m" "kaocha.runner"
+                      "--plugin" "capture-output"
+                      "--plugin" "junit-xml"
                       "--junit-xml-file" "test-results/kaocha/unit-test-result.xml"]}}}
-        
+

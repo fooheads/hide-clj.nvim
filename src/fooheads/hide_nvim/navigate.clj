@@ -1,8 +1,8 @@
 (ns fooheads.hide-nvim.navigate
-  (:require [fooheads.hide.navigate :as hn :reload true]
-            [fooheads.hide-nvim.connection :as connection]
-            [fooheads.hide-nvim.rpc :as rpc]
-            [neovim.core :as n]))
+  (:require
+    [fooheads.hide.navigate :as hn]
+    [fooheads.hide-nvim.connection :as connection]
+    [fooheads.hide-nvim.rpc :as rpc]))
 
 (defn echo [connection s]
   (let [escaped (clojure.string/replace s "\"" "\\\"")
