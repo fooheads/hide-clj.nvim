@@ -4,7 +4,8 @@
 
 [x] Poll from event queue, execute functions for known events
 [x] Cleanup
-[ ] Clean unused dependencies
+[x] Clean unused dependencies
+[x] Use specs to validate msg-data in and out
 [ ] Open REPL log
 [ ] Send output to REPL log
 [ ] Move configs/mappings from init.vim to hide
@@ -13,7 +14,6 @@
 [ ] Functions for viewing the message log
 [ ] Generate functions from nvim api-info
 [ ] Generate specs from nvim api-info
-[ ] Use specs to validate msg-data in and out
 [ ] On exception, try to reset everything and and reconnect
 [ ] Evaluate top level form withing a comment
 [ ] Document keyboard mappings in README
