@@ -91,26 +91,6 @@
 
   (stop client))
 
-  ;; TODO: next steps
-  ;;
-  ;; - commit
-  ;; - map vim notifications to commands/functions
-  ;; - queue? or execute on the event-log thread?
-  ;; - client message log
-  ;; - cleanup all unused code and dependencies
-  ;; - move config / vim mappings to hide config
-  ;; - make sure puget colors and stuff gets used
-  ;;
-  ;; - K - docs
-  ;; - gd - goto definition
-  ;; - evaluate top form inside a (comment)
-  ;;
-  ;; - document keyboard commands in README
-  ;;
-  ;; - repl window
-  ;; - send evals through hide.nvim
-
-
 
 
 
