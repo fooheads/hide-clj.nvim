@@ -44,7 +44,7 @@
 (defn write-data
   "Pack and write data to output-stream"
   [output-stream data]
-  (prn "write: " data)
+  ;(prn "write: " data)
   (msgpack/pack-stream data output-stream)
   (.flush output-stream))
 
@@ -52,36 +52,6 @@
   "Read and unpack a raw message from input-stream"
   [input-stream]
   (let [data (msgpack/unpack input-stream)]
-    (prn "read: " data)
+    ;(prn "read: " data)
     data))
 
-;;
-;; Sending requests and receiving responses.
-;;
-
-;; (defn send-request
-;;   ([conn msg]
-;;    (send-request conn (:channel @conn) msg))
-;; 
-;;   ([conn channel [fn-name args]]
-;;    (let [seq-num (:seq-num @conn)
-;;          msg [msgtype-request channel fn-name args]]
-;;      (swap! conn
-;;             #(-> %
-;;                  (update :seq-num inc)
-;;                  (update :messages conj msg)))
-;;      (write-data (:output-stream @conn) msg))))
-;; 
-;; (defn recv-response [conn]
-;;   (let [response-msg (read-data (:input-stream @conn))]
-;;     (swap! conn update :messages conj response-msg)
-;;     (let [[msgtype msg-id _ msg] response-msg]
-;;       msg)))
-;; 
-;; (defn call
-;;   ([conn msg]
-;;    (call conn (:channel @conn) msg))
-;;   ([conn channel msg]
-;;    (send-request conn msg)
-;;    (recv-response conn)))
-;; 

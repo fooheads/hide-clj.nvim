@@ -1,6 +1,6 @@
 (ns fooheads.hide-nvim
   (:require
-    [fooheads.hide-nvim.client2 :as client]
+    [fooheads.hide-nvim.client :as client]
     [fooheads.hide-nvim.navigate :as nav]
     [clojure.java.io :as io]
     [clojure.string :as str]

@@ -5,24 +5,6 @@
     [fooheads.hide-nvim.rpc :as rpc]
     [msgpack.core :as msgpack]))
 
-(deftest pred-test
-  (is (true? (rpc/msgtype-request? 0)))
-  (is (false? (rpc/msgtype-request? 1)))
-  (is (false? (rpc/msgtype-request? 2)))
-
-  (is (false? (rpc/msgtype-response? 0)))
-  (is (true? (rpc/msgtype-response? 1)))
-  (is (false? (rpc/msgtype-response? 2)))
-
-  (is (false? (rpc/msgtype-notification? 0)))
-  (is (false? (rpc/msgtype-notification? 1)))
-  (is (true? (rpc/msgtype-notification? 2)))
-
-  (is (true? (rpc/msgtype? 0)))
-  (is (true? (rpc/msgtype? 1)))
-  (is (true? (rpc/msgtype? 2)))
-  (is (false? (rpc/msgtype? 3))))
-
 (defn loopback-data
   "Writes data using rpc/write-data to a temporary output stream,
   and reads the data back rpc/read-data. Supports testing msgpack

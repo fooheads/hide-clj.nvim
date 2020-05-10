@@ -2,7 +2,16 @@
   (:require
     [clojure.core.async :as async]
     [clojure.edn :as edn]
+    [fooheads.hide-nvim.commands :as commands]
     [fooheads.hide-nvim.connection :as c]))
+
+(defn execute-command [connection method params]
+  ;(prn "execute..." method params)
+  (if-let [f (get commands/command-map (keyword method))]
+    (do
+      ;(prn "found f: " f)
+      (f connection))
+    (println (format "Can't find command '%s'" method))))
 
 (defn- event-loop [channel connection]
   (let [quit? (atom false)]
@@ -17,17 +26,19 @@
 
           (if (c/data-available? connection)
             (let [msg (c/receive-message-blocking connection)]
-              (prn "msg" msg)
+              (prn "event-loop: msg" msg)
               (case (:type msg)
                 :notification-msg
-                (prn "func" (:method msg) "args" (:params msg))
+                (do
+                  (prn "event-loop: " "func" (:method msg) "args" (:params msg))
+                  (execute-command connection (:method msg) (:params msg)))
+
                 (throw (Exception. (str "Unsupported msg-type: " (:type msg)))))))
 
           (catch Throwable e
             (println "EXCEPTION!" e)
-            (prn (ex-data e))
-            (reset! quit? true))))
-            ;(println "Nothing available"))))
+            (prn (ex-data e)))))
+            ;(reset! quit? true))))
       (async/close! channel)
       (println "Quitting - exiting event-loop!"))))
 
@@ -73,6 +84,7 @@
 
 (comment
   (def client (start "localhost" 7777))
+  (def client (start "localhost" 50232))
 
   (exec client "nvim_get_current_line" [])
   (exec client "nvim_command" [":echo 'testing2'"])
@@ -80,7 +92,7 @@
   (stop client))
 
   ;; TODO: next steps
-  ;; 
+  ;;
   ;; - commit
   ;; - map vim notifications to commands/functions
   ;; - queue? or execute on the event-log thread?
@@ -92,7 +104,7 @@
   ;; - K - docs
   ;; - gd - goto definition
   ;; - evaluate top form inside a (comment)
-  ;; 
+  ;;
   ;; - document keyboard commands in README
   ;;
   ;; - repl window
