@@ -53,7 +53,7 @@
 
   (let [ostream (:output-stream @connection)
         msgid (:msgid @connection)
-        msg (s/unform ::msg/request-msg 
+        msg (s/unform ::msg/request-msg
                       {:type msg/request :msgid msgid :method method :params params})]
     (assert (s/valid? ::msg/request-msg msg))
     (swap! connection update :msgid inc)
@@ -64,14 +64,14 @@
   [connection method params]
 
   (let [ostream (:output-stream @connection)
-        msg (s/unform ::msg/notification-msg 
+        msg (s/unform ::msg/notification-msg
                       {:type msg/notification :method method :params params})]
     (assert (s/valid? ::msg/notification-msg msg))
     (rpc/write-data ostream msg)))
 
 (defn receive-message-blocking
-  "Receives a message over the connection. Will block until there is 
-  a message. Returns a conformed message or throws an exception if the 
+  "Receives a message over the connection. Will block until there is
+  a message. Returns a conformed message or throws an exception if the
   message is non conformant."
   [connection]
   (let [msg (rpc/read-data (:input-stream @connection))]
@@ -82,8 +82,8 @@
       (throw (ex-info "Received an unknown message!" {:msg msg})))))
 
 (defn receive-response-blocking
-  "Receives a response message over the connection. Will block until there is 
-  a message. Returns a conformed response message or throws an exception if the 
+  "Receives a response message over the connection. Will block until there is
+  a message. Returns a conformed response message or throws an exception if the
   message is non conformant."
   [connection]
   (let [msg (rpc/read-data (:input-stream @connection))
@@ -97,9 +97,10 @@
       (if error
         (let [error-msg (second error)]
           (throw (ex-info error-msg {:msg msg :conformed-msg conformed-msg})))
-        result))))
+        result))))   ;; TODO: assoc type?
 
 
+;; TODO: remove?
 (defn receive-response
   "Receives a response message over the connection. Will timeout
   if there is no message present in (default) 3000 ms. :timeout-ms
@@ -123,7 +124,7 @@
   "Receives a response message over the connection. Will timeout
   if there is no message present in (default) 3000 ms. :timeout-ms
   can be set in options."
-  [receive-func connection & options]
+  [receive-func connection & options]  ;; TODO: bug?
   (let [options (merge options {:timeout-ms 3000})
         max-time (:timeout-ms options)]
     (loop [time-elapsed 0]
