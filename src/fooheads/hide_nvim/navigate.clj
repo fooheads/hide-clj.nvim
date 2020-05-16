@@ -50,7 +50,8 @@
 
   ([connection code row col]
    (let [doc-text (hn/doc code row col)]
-     (echo connection doc-text))))
+     (if doc-text
+       (echo connection doc-text)))))
 
 (defn go-to-definition
   ([connection]
