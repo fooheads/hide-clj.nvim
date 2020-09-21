@@ -13,7 +13,7 @@
       (f connection))
     (println (format "Can't find command '%s'" method))))
 
-(defn- event-loop [channel connection]
+(defn- event-loop [channel event-connection command-connection]
   (let [quit? (atom false)]
     (async/go
       (while (not @quit?)
@@ -24,14 +24,14 @@
             (if (= "quit" msg)
               (reset! quit? true)))
 
-          (if (c/data-available? connection)
-            (let [msg (c/receive-message-blocking connection)]
+          (if (c/data-available? event-connection)
+            (let [msg (c/receive-message-blocking event-connection)]
               ;(prn "event-loop: msg" msg)
               (case (:type msg)
                 :notification-msg
                 (do
                   ;(prn "event-loop: " "func" (:method msg) "args" (:params msg))
-                  (execute-command connection (:method msg) (:params msg)))
+                  (execute-command command-connection (:method msg) (:params msg)))
 
                 (throw (Exception. (str "Unsupported msg-type: " (:type msg)))))))
 
@@ -69,7 +69,7 @@
              event-channel (async/chan)
              vim-hide-channel (:channel @event-connection)]
 
-         (event-loop event-channel event-connection)
+         (event-loop event-channel event-connection command-connection)
          (set-hide-channel-in-vim command-connection vim-hide-channel)
 
          (atom
