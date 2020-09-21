@@ -1,9 +1,11 @@
 (ns example)
 
-(def add [a b]
-  (+ a b))
+(defn add [a b]
+    (+ a b))
 
-(map inc [1 2 3])
+(defn sub [a b]
+  (- a b))
 
 (comment
+  (reduce add [1 2 3])
   (map inc [1 2 3]))

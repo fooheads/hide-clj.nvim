@@ -1,1 +1,2 @@
-{}
+{:deps
+ {hide-clj.nvim {:local/root ".."}}}
