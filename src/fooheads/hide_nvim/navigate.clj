@@ -40,7 +40,7 @@
       (clojure.string/join "\n")))
 
 (defn edit [connection full-path]
-  (connection/call connection "nvim_command" [(str ":edit " full-path)]))
+  (connection/call connection "nvim_command" [(str ":edit! " full-path)]))
 
 (defn doc
   ([connection]
