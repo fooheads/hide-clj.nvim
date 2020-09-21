@@ -8,8 +8,8 @@
 [x] Use specs to validate msg-data in and out
 [ ] Open REPL log
 [ ] Send output to REPL log
-[ ] Move configs/mappings from init.vim to hide
 [ ] Evaluate code (consider namespace)
+[ ] Move configs/mappings from init.vim to hide
 [ ] Storing message log in state
 [ ] Functions for viewing the message log
 [ ] Generate functions from nvim api-info
