@@ -69,5 +69,22 @@
   (println "Goodbye")
   #_(System/exit 0))
 
+(comment
+  (def client (atom (client/start "localhost" 7777)))
+
+  (client/exec @client "nvim_open_win" [0 true {"relative" "editor"
+                                                "row" 1
+                                                "col" 1
+                                                "width" 100
+                                                "height" 100}])
+  (def w *1)
+
+  (client/exec @client "nvim_win_close" [w false])
+
+  (def b (client/exec @client "nvim_create_buf" [false false]))
+  (client/exec @client "nvim_command" ["sp"])
+  (client/exec @client "nvim_command" ["wincmd H"])
+  (def b (client/exec @client "nvim_create_buf" [true true]))
+  (client/exec @client "nvim_command" [(format "buffer %d" (:n b))]))
 
 
