@@ -14,8 +14,10 @@
   is visual inside nvim."
   [connection]
   (let [current-win (rpc/->Window 0)
-        [row col] (connection/call connection "nvim_win_get_cursor" [current-win])]
-    [row (+ col 1)]))
+        [row col] (connection/call connection "nvim_win_get_cursor" [current-win])
+        row (if (string? row) (Integer/parseInt row) row)
+        col (if (string? col) (Integer/parseInt col) col)]
+    [row (+  col 1)]))
 
 (defn set-cursor
   "Sets the cursor at (row,col), with the same (row,col) as
@@ -72,6 +74,7 @@
 
         [row col] (get-cursor connection)]
     (hn/get-namespace code row col)))
+
 
 
 
