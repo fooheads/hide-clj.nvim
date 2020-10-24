@@ -36,8 +36,9 @@
                 (throw (Exception. (str "Unsupported msg-type: " (:type msg)))))))
 
           (catch Throwable e
-            (println "EXCEPTION!" e)
-            (prn (ex-data e)))))
+            (def *ex e)
+            (println "Exception in hide. Exception stored in fooheads.hide-nvim.client/*ex for inspection")
+            (println "Exception message:" (.getMessage e)))))
             ;(reset! quit? true))))
       (async/close! channel)
       (println "Quitting - exiting event-loop!"))))
