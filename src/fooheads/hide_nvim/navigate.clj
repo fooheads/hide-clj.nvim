@@ -14,10 +14,14 @@
   is visual inside nvim."
   [connection]
   (let [current-win (rpc/->Window 0)
-        [row col] (connection/call connection "nvim_win_get_cursor" [current-win])
-        row (if (string? row) (Integer/parseInt row) row)
-        col (if (string? col) (Integer/parseInt col) col)]
-    [row (+  col 1)]))
+        [row col] (connection/call connection "nvim_win_get_cursor" [current-win])]
+    (try
+      (let [row-num (if (string? row) (Integer/parseInt row) row)
+            col-num (if (string? col) (Integer/parseInt col) col)]
+        [row-num (+  col-num 1)])
+      (catch Exception e
+        (throw (ex-info "Could not parse cursor position."
+                        {:row row :col col}))))))
 
 (defn set-cursor
   "Sets the cursor at (row,col), with the same (row,col) as
