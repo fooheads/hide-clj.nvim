@@ -25,8 +25,9 @@
     channel))
 
 (defn log-msg [connection msg]
-  (let [ts (System/currentTimeMillis)]
-    (swap! connection update :log conj {:ts ts :msg msg})))
+  (let [ts (System/currentTimeMillis)
+        make-log-entry (fn [log log-entry] (cons log-entry (take 999 log)))]
+    (swap! connection update :log make-log-entry {:ts ts :msg msg})))
 
 (defn create-connection
   "Creates a socket connection to nvim and figures out the
@@ -45,7 +46,7 @@
        :output-stream ostream
        :msgid 300
        :channel (get-channel istream ostream)
-       :log []})))
+       :log (list)})))
 
 (defn data-available?
   "Returns true if there is data available on the :input-stream"
