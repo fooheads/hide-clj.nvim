@@ -29,13 +29,16 @@
               ;(prn "event-loop: msg" msg)
               (case (:type msg)
                 :notification-msg
-                (do
+                (try
                   ;(prn "event-loop: " "func" (:method msg) "args" (:params msg))
-                  (execute-command command-connection (:method msg) (:params msg)))
+                  (execute-command command-connection (:method msg) (:params msg))
+                  (catch Exception e
+                    (c/log-msg command-connection {:ex-msg (.getMessage e) :ex e})))
 
                 (throw (Exception. (str "Unsupported msg-type: " (:type msg)))))))
 
           (catch Throwable e
+            (c/log-msg event-connection {:ex-msg (.getMessage e) :ex e})
             (def *ex e)
             (println "Exception in hide. Exception stored in fooheads.hide-nvim.client/*ex for inspection")
             (println "Exception message:" (.getMessage e)))))
@@ -73,15 +76,30 @@
          (event-loop event-channel event-connection command-connection)
          (set-hide-channel-in-vim command-connection vim-hide-channel)
 
-         (atom
-           {:command-connection command-connection
-            :event-connection event-connection
-            :event-channel event-channel})))
+         {:command-connection command-connection
+          :event-connection event-connection
+          :event-channel event-channel}))
      (println "Can't find hide port. Can't start properly."))))
 
 (defn stop
   [client]
-  (async/>!! (:event-channel @client) "quit"))
+  (async/>!! (:event-channel client) "quit"))
+
+(defn- log-entries
+  [conn-name connection]
+  (map (fn [log-entry] (merge {:conn conn-name} log-entry)) (:log connection)))
+
+(defn get-log
+  [client]
+  (let [ts-asc-conn-desc
+        (fn [[a1 b1] [a2 b2]] (if (= a1 a2) (compare b2 b1) (compare a1 a2)))
+
+        command-log (log-entries :command (deref (:command-connection client)))
+        event-log (log-entries :event (deref (:event-connection client)))]
+    (sort-by
+      (juxt :ts :conn)
+      ts-asc-conn-desc
+      (concat command-log event-log))))
 
 (comment
   (def client (start "localhost" 7777))

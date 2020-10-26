@@ -58,6 +58,12 @@
     (println "\nresult:\n")
     (puget/pprint form)))
 
+(defn print-log []
+  (let [log (client/get-log @client)]
+    (prn "num entries:" (count log))
+    (doseq [msg log]
+      (prn msg))))
+
 (defn -main [& args]
   (println "Hello")
   (clojure.main/repl
@@ -65,7 +71,7 @@
     :prompt #'repl-prompt
     :print #'hide-print)
 
-  (client/stop)
+  (client/stop @client)
   (println "Goodbye")
   #_(System/exit 0))
 

@@ -24,6 +24,10 @@
         [channel api-info] msg]
     channel))
 
+(defn log-msg [connection msg]
+  (let [ts (System/currentTimeMillis)]
+    (swap! connection update :log conj {:ts ts :msg msg})))
+
 (defn create-connection
   "Creates a socket connection to nvim and figures out the
   nvim assigned channel for this socket. Returns an atom
@@ -40,14 +44,15 @@
        :input-stream istream
        :output-stream ostream
        :msgid 300
-       :channel (get-channel istream ostream)})))
+       :channel (get-channel istream ostream)
+       :log []})))
 
-(defn data-available? [connection]
-  "Returns true if there is data available on the
-  :input-stream"
+(defn data-available?
+  "Returns true if there is data available on the :input-stream"
+  [connection]
   (> (.available (:input-stream @connection)) 0))
 
-(defn send-request
+(defn- send-request
   "Sends a request message over the connection."
   [connection method params]
 
@@ -57,9 +62,10 @@
                       {:type msg/request :msgid msgid :method method :params params})]
     (assert (s/valid? ::msg/request-msg msg))
     (swap! connection update :msgid inc)
+    (log-msg connection msg)
     (rpc/write-data ostream msg)))
 
-(defn send-notification
+(defn- send-notification
   "Sends a notification message over the connection."
   [connection method params]
 
@@ -67,6 +73,7 @@
         msg (s/unform ::msg/notification-msg
                       {:type msg/notification :method method :params params})]
     (assert (s/valid? ::msg/notification-msg msg))
+    (log-msg connection msg)
     (rpc/write-data ostream msg)))
 
 (defn receive-message-blocking
@@ -76,6 +83,7 @@
   [connection]
   (let [msg (rpc/read-data (:input-stream @connection))]
         ;conformed-msg (s/conform ::msg/msg msg)]
+    (log-msg connection msg)
     (if (s/valid? ::msg/msg msg)
       (let [[msg-type msg] (s/conform ::msg/msg msg)]
         (assoc msg :type msg-type))
@@ -88,6 +96,7 @@
   [connection]
   (let [msg (rpc/read-data (:input-stream @connection))
         conformed-msg (s/conform ::msg/response-msg msg)]
+    (log-msg connection msg)
     (if-not (s/valid? ::msg/response-msg msg)
       (throw (ex-info "Received an message that was not a response message!" {:msg msg})))
 
@@ -98,26 +107,6 @@
         (let [error-msg (second error)]
           (throw (ex-info error-msg {:msg msg :conformed-msg conformed-msg})))
         result))))   ;; TODO: assoc type?
-
-
-;; TODO: remove?
-(defn receive-response
-  "Receives a response message over the connection. Will timeout
-  if there is no message present in (default) 3000 ms. :timeout-ms
-  can be set in options."
-  [connection & options]
-  (let [options (merge options {:timeout-ms 3000})
-        max-time (:timeout-ms options)]
-    (loop [time-elapsed 0]
-      (if (data-available? connection)
-        (receive-response-blocking connection)
-        (if (< time-elapsed max-time)
-          (let [sleep-time 100]
-            (Thread/sleep sleep-time)
-            (recur (+ time-elapsed sleep-time)))
-          (throw (ex-info "Timeout receiving response"
-                          {:connection connection
-                           :options options})))))))
 
 
 (defn receive-with-timeout
