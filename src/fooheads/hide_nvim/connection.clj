@@ -124,12 +124,13 @@
             (Thread/sleep sleep-time)
             (recur (+ time-elapsed sleep-time)))
           (throw (ex-info "Timeout receiving response"
-                          {:connection connection
+                          {:connection (dissoc @connection :log)
                            :options options})))))))
 
 
-(def receive-message (partial receive-with-timeout receive-message-blocking))
-(def receive-response (partial receive-with-timeout receive-response-blocking))
+; (def receive-message (partial receive-with-timeout receive-message-blocking))
+; (def receive-response (partial receive-with-timeout receive-response-blocking))
+(def receive-response receive-response-blocking)
 
 
 (defn call
