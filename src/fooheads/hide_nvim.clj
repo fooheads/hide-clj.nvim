@@ -39,7 +39,7 @@
 ;; see *options* in puget/printer.clj to understand how to control output:
 ;; https://github.com/greglook/puget/blob/master/src/puget/printer.clj
 
-(defn hide-print [form]
+(defn pprn [& forms]
   (let [config-filename (format "%s/.clojure/hide-config.edn"
                                 (System/getenv "HOME"))
         config (if (.exists (io/as-file config-filename)) (read-string (slurp config-filename)) {})]
@@ -55,8 +55,12 @@
                 :width 80}
                (:print-options config))))
 
-    (println "\nresult:\n")
-    (puget/pprint form)))
+    (doseq [form forms]
+      (puget/pprint form))))
+
+(defn repl-print [form]
+  (println "\nresult:\n")
+  (pprn form))
 
 (defn print-log []
   (let [log (client/get-log @client)]
@@ -69,7 +73,7 @@
   (clojure.main/repl
     :init #'repl-init
     :prompt #'repl-prompt
-    :print #'hide-print)
+    :print #'repl-print)
 
   (client/stop @client)
   (println "Goodbye")
