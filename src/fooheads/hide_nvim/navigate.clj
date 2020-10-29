@@ -1,5 +1,6 @@
 (ns fooheads.hide-nvim.navigate
   (:require
+    [clojure.string :as str]
     [fooheads.hide.navigate :as hn]
     [fooheads.hide-nvim.connection :as connection]
     [fooheads.hide-nvim.rpc :as rpc]))
@@ -40,7 +41,10 @@
       (clojure.string/join "\n")))
 
 (defn edit [connection full-path]
-  (connection/call connection "nvim_command" [(str ":edit! " full-path)]))
+  (connection/call connection "nvim_command" [(str ":edit " full-path)]))
+
+(defn write! [connection full-path]
+  (connection/call connection "nvim_command" [(str ":write! " full-path)]))
 
 (defn doc
   ([connection]
@@ -50,7 +54,7 @@
 
   ([connection code row col]
    (let [doc-text (hn/doc code row col)]
-     (if doc-text
+     (when doc-text
        (echo connection doc-text)))))
 
 (defn go-to-definition
@@ -63,6 +67,8 @@
    (let [[full-path new-row new-col] (hn/find-definition code row col)]
      (if full-path
        (do
+         (when-not (str/includes? full-path "zipfile")
+           (write! connection full-path))
          (edit connection full-path)
          (set-cursor connection new-row new-col))
        (echo connection "Can't find source file")))))
