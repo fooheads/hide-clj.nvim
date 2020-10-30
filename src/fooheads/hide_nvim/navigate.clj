@@ -43,8 +43,8 @@
 (defn edit [connection full-path]
   (connection/call connection "nvim_command" [(str ":edit " full-path)]))
 
-(defn write! [connection full-path]
-  (connection/call connection "nvim_command" [(str ":write! " full-path)]))
+(defn save-current-buffer [connection]
+  (connection/call connection "nvim_command" [(str ":w")]))
 
 (defn doc
   ([connection]
@@ -67,8 +67,7 @@
    (let [[full-path new-row new-col] (hn/find-definition code row col)]
      (if full-path
        (do
-         (when-not (str/includes? full-path "zipfile")
-           (write! connection full-path))
+         (save-current-buffer connection)
          (edit connection full-path)
          (set-cursor connection new-row new-col))
        (echo connection "Can't find source file")))))
