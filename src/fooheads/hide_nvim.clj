@@ -43,8 +43,7 @@
 
 
 (def time-handlers
-  {
-   java.time.Month (puget/tagged-handler 'time/month str)
+  {java.time.Month (puget/tagged-handler 'time/month str)
    java.time.Period (puget/tagged-handler 'time/period str)
    java.time.LocalDate (puget/tagged-handler 'time/date str)
    java.time.LocalDateTime (puget/tagged-handler 'time/date-time str)
@@ -59,7 +58,12 @@
    java.time.DayOfWeek (puget/tagged-handler 'time/day-of-week str)})
 
 
-; (time-literals.read-write/print-time-literals-clj!)
+(def other-print-handlers
+  {java.util.UUID (puget/tagged-handler 'uuid str)})
+
+
+(def print-handlers
+  (merge time-handlers other-print-handlers))
 
 
 (defn pprn [& forms]
@@ -79,7 +83,7 @@
                (:print-options config))))
 
     (doseq [form forms]
-      (puget/pprint form {:print-handlers time-handlers}))))
+      (puget/pprint form {:print-handlers print-handlers}))))
 
 
 (defn repl-print [form]
@@ -122,6 +126,7 @@
   (client/exec @client "nvim_command" [(format "buffer %d" (:n b))]))
 
 (comment
+  (pprn (java.util.UUID/randomUUID))
   (pprn #time/month "JUNE")
   (pprn #time/period "P1D")
   (pprn #time/date "2039-01-01")
