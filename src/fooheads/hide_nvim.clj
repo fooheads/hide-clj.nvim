@@ -6,6 +6,7 @@
     [clojure.string :as str]
     [clojure.main]
     [clojure.pprint :refer [pprint]]
+    [clojure.stacktrace :refer [print-stack-trace]]
     [puget.printer :as puget]
     [time-literals.data-readers]
     [time-literals.read-write]))
@@ -66,29 +67,43 @@
   (merge time-handlers other-print-handlers))
 
 
-(defn pprn [& forms]
+(defn config []
   (let [config-filename (format "%s/.clojure/hide-config.edn"
-                                (System/getenv "HOME"))
-        config (if (.exists (io/as-file config-filename)) (read-string (slurp config-filename)) {})]
+                                (System/getenv "HOME"))]
+    (if (.exists (io/as-file config-filename))
+      (read-string (slurp config-filename))
+      {})))
 
-    (alter-var-root
-      #'puget.printer/*options*
-      (fn [m]
-        (merge m
-               {:coll-limit 1000          ;; most collections
-                :map-delimiter " "
-                :print-color true
-                :sort-keys 1000
-                :width 80}
-               (:print-options config))))
 
-    (doseq [form forms]
-      (puget/pprint form {:print-handlers print-handlers}))))
+(defn pprn [& forms]
+  (alter-var-root
+    #'puget.printer/*options*
+    (fn [m]
+      (merge m
+             {:coll-limit 1000          ;; most collections
+              :map-delimiter " "
+              :print-color true
+              :sort-keys 1000
+              :width 80}
+             (:print-options (config)))))
+
+  (doseq [form forms]
+    (puget/pprint form {:print-handlers print-handlers})))
 
 
 (defn repl-print [form]
-  (println "\nresult:\n")
-  (pprn form))
+  (let [config (config)
+        post-hook (get-in config [:repl :post-hook])]
+    (println "\nresult:\n")
+    (pprn form)
+
+    (when (symbol? post-hook)
+      (when-let [f (resolve post-hook)]
+        (try
+          (f form)
+          (catch Exception e
+            (print-stack-trace e)))))))
+
 
 (defn print-log []
   (let [log (client/get-log @client)]
