@@ -1,7 +1,6 @@
 (ns fooheads.hide-nvim.rpc-test
   (:require
-    [clojure.spec.alpha :as s]
-    [clojure.test :refer :all]
+    [clojure.test :refer [deftest is testing]] 
     [fooheads.hide-nvim.rpc :as rpc]
     [msgpack.core :as msgpack]))
 

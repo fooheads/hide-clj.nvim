@@ -20,8 +20,8 @@
   [istream ostream]
   (rpc/write-data ostream [0 1 "nvim_get_api_info" []])
   (let [response-msg (rpc/read-data istream)
-        [msgtype msg-id _ msg] response-msg
-        [channel api-info] msg]
+        [_msgtype _msg-id _ msg] response-msg
+        [channel _api-info] msg]
     channel))
 
 
@@ -72,18 +72,6 @@
     (rpc/write-data ostream msg)))
 
 
-(defn- send-notification
-  "Sends a notification message over the connection."
-  [connection method params]
-
-  (let [ostream (:output-stream @connection)
-        msg (s/unform ::msg/notification-msg
-                      {:type msg/notification :method method :params params})]
-    (assert (s/valid? ::msg/notification-msg msg))
-    (log-msg connection msg)
-    (rpc/write-data ostream msg)))
-
-
 (defn receive-message-blocking
   "Receives a message over the connection. Will block until there is
   a message. Returns a conformed message or throws an exception if the
@@ -106,7 +94,7 @@
   (let [msg (rpc/read-data (:input-stream @connection))
         conformed-msg (s/conform ::msg/response-msg msg)]
     (log-msg connection msg)
-    (if-not (s/valid? ::msg/response-msg msg)
+    (when-not (s/valid? ::msg/response-msg msg)
       (throw (ex-info "Received an message that was not a response message!" {:msg msg})))
 
     ;; Error types: 0 - Exception, 1 - Validation (see: nvim_get_api_info)
@@ -152,8 +140,8 @@
 
 (comment
 
-  (prn (deref cc))
   (def cc (create-connection "localhost" 7777))
+  (prn (deref cc))
 
   (do
     (send-request cc "nvim_buf_line_count" [0])

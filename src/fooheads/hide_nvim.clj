@@ -2,9 +2,7 @@
   (:require
     [clojure.java.io :as io]
     [clojure.main]
-    [clojure.pprint :refer [pprint]]
     [clojure.stacktrace :refer [print-stack-trace]]
-    [clojure.string :as str]
     [fooheads.hide-nvim.client :as client]
     [fooheads.hide-nvim.navigate :as nav]
     [puget.printer :as puget]
@@ -24,7 +22,7 @@
 
 
 (defn ns-switch
-  [connection & args]
+  [connection & _args]
   (prn "ns:" (nav/get-namespace connection)))
 
 
@@ -130,7 +128,7 @@
 
 
 (defn -main
-  [& args]
+  [& _args]
   (println "Hello")
   (clojure.main/repl
     :init #'repl-init

@@ -25,6 +25,7 @@
 ;;
 ;; The msgpack extentions for Buffer, Window and Tabpage.
 ;;
+#_:clj-kondo/ignore
 (msgpack.macros/extend-msgpack
   Buffer
   0
@@ -32,6 +33,7 @@
   [bytes] (->Buffer (msgpack/unpack bytes)))
 
 
+#_:clj-kondo/ignore
 (msgpack.macros/extend-msgpack
   Window
   1
@@ -39,6 +41,7 @@
   [bytes] (->Window (msgpack/unpack bytes)))
 
 
+#_:clj-kondo/ignore
 (msgpack.macros/extend-msgpack
   Tabpage
   2

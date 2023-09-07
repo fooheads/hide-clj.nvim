@@ -7,12 +7,9 @@
 
 
 (defn execute-command
-  [connection method params]
-  ;(prn "execute..." method params)
+  [connection method _params]
   (if-let [f (get commands/command-map (keyword method))]
-    (do
-      ;(prn "found f: " f)
-      (f connection))
+    (f connection)
     (println (format "Can't find command '%s'" method))))
 
 
@@ -24,11 +21,11 @@
         (Thread/sleep 100)
 
         (try
-          (if-let [msg (async/poll! channel)]
-            (if (= "quit" msg)
+          (when-let [msg (async/poll! channel)]
+            (when (= "quit" msg)
               (reset! quit? true)))
 
-          (if (c/data-available? event-connection)
+          (when (c/data-available? event-connection)
             (let [msg (c/receive-message-blocking event-connection)]
               ;(prn "event-loop: msg" msg)
               (case (:type msg)
@@ -43,6 +40,7 @@
 
           (catch Throwable e
             (c/log-msg event-connection {:ex-msg (.getMessage e) :ex e})
+            #_:clj-kondo/ignore
             (def *ex e)
             (println "Exception in hide. Exception stored in fooheads.hide-nvim.client/*ex for inspection")
             (println "Exception message:" (.getMessage e)))))
@@ -67,7 +65,7 @@
   ([]
    (let [host "localhost"
          port-str (or (System/getenv "HIDE_PORT")
-                      (try (slurp ".hide-port") (catch Exception e nil)))
+                      (try (slurp ".hide-port") (catch Exception _e nil)))
          port (edn/read-string port-str)]
      (if port
        (start host port)

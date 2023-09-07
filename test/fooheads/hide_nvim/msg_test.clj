@@ -1,7 +1,7 @@
 (ns fooheads.hide-nvim.msg-test
   (:require
     [clojure.spec.alpha :as s]
-    [clojure.test :refer :all]
+    [clojure.test :refer [deftest is testing]]
     [fooheads.hide-nvim.msg :as msg]))
 
 
