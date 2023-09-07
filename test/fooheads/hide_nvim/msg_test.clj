@@ -4,6 +4,7 @@
     [clojure.test :refer :all]
     [fooheads.hide-nvim.msg :as msg]))
 
+
 (deftest specs-conform-tests
   (testing "request message"
     (is (= {:type 0, :msgid 203 :method "fname" :params ["arg1" "arg2"]}

@@ -11,9 +11,16 @@
 ;; but they're not interchangable. For serialization and msgpack
 ;; extention reasons, these are records here.
 
-(defrecord Buffer [n])
-(defrecord Window [id])
-(defrecord Tabpage [handle])
+(defrecord Buffer
+  [n])
+
+
+(defrecord Window
+  [id])
+
+
+(defrecord Tabpage
+  [handle])
 
 ;;
 ;; The msgpack extentions for Buffer, Window and Tabpage.
@@ -24,11 +31,13 @@
   [buffer] (msgpack/pack (:n buffer))
   [bytes] (->Buffer (msgpack/unpack bytes)))
 
+
 (msgpack.macros/extend-msgpack
   Window
   1
   [window] (msgpack/pack (:id window))
   [bytes] (->Window (msgpack/unpack bytes)))
+
 
 (msgpack.macros/extend-msgpack
   Tabpage
@@ -47,6 +56,7 @@
   ;(prn "write: " data)
   (msgpack/pack-stream data output-stream)
   (.flush output-stream))
+
 
 (defn read-data
   "Read and unpack a raw message from input-stream"

@@ -8,11 +8,11 @@
 
   2) event stream: a connection intended to only capture commands
      and events from nvim."
-
   (:require
     [clojure.spec.alpha :as s]
     [fooheads.hide-nvim.msg :as msg]
     [fooheads.hide-nvim.rpc :as rpc]))
+
 
 (defn- get-channel
   "Calls nvim to get the channel. This call also returns
@@ -24,10 +24,13 @@
         [channel api-info] msg]
     channel))
 
-(defn log-msg [connection msg]
+
+(defn log-msg
+  [connection msg]
   (let [ts (System/currentTimeMillis)
         make-log-entry (fn [log log-entry] (cons log-entry (take 999 log)))]
     (swap! connection update :log make-log-entry {:ts ts :msg msg})))
+
 
 (defn create-connection
   "Creates a socket connection to nvim and figures out the
@@ -48,10 +51,12 @@
        :channel (get-channel istream ostream)
        :log (list)})))
 
+
 (defn data-available?
   "Returns true if there is data available on the :input-stream"
   [connection]
   (> (.available (:input-stream @connection)) 0))
+
 
 (defn- send-request
   "Sends a request message over the connection."
@@ -66,6 +71,7 @@
     (log-msg connection msg)
     (rpc/write-data ostream msg)))
 
+
 (defn- send-notification
   "Sends a notification message over the connection."
   [connection method params]
@@ -76,6 +82,7 @@
     (assert (s/valid? ::msg/notification-msg msg))
     (log-msg connection msg)
     (rpc/write-data ostream msg)))
+
 
 (defn receive-message-blocking
   "Receives a message over the connection. Will block until there is
@@ -89,6 +96,7 @@
       (let [[msg-type msg] (s/conform ::msg/msg msg)]
         (assoc msg :type msg-type))
       (throw (ex-info "Received an unknown message!" {:msg msg})))))
+
 
 (defn receive-response-blocking
   "Receives a response message over the connection. Will block until there is
@@ -114,7 +122,8 @@
   "Receives a response message over the connection. Will timeout
   if there is no message present in (default) 3000 ms. :timeout-ms
   can be set in options."
-  [receive-func connection & options]  ;; TODO: bug?
+  [receive-func connection & options]
+;; TODO: bug?
   (let [options (merge options {:timeout-ms 3000})
         max-time (:timeout-ms options)]
     (loop [time-elapsed 0]
@@ -139,6 +148,7 @@
   [connection method params]
   (send-request connection method params)
   (receive-response connection))
+
 
 (comment
 
@@ -166,9 +176,5 @@
     (receive-response cc))
 
   (call cc "nvim_buf_line_count" [0]))
-
-
-
-
 
 

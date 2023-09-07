@@ -5,7 +5,9 @@
     [fooheads.hide-nvim.commands :as commands]
     [fooheads.hide-nvim.connection :as c]))
 
-(defn execute-command [connection method params]
+
+(defn execute-command
+  [connection method params]
   ;(prn "execute..." method params)
   (if-let [f (get commands/command-map (keyword method))]
     (do
@@ -13,7 +15,9 @@
       (f connection))
     (println (format "Can't find command '%s'" method))))
 
-(defn- event-loop [channel event-connection command-connection]
+
+(defn- event-loop
+  [channel event-connection command-connection]
   (let [quit? (atom false)]
     (async/go
       (while (not @quit?)
@@ -46,13 +50,18 @@
       (async/close! channel)
       (println "Quitting - exiting event-loop!"))))
 
-(defn exec [client method params]
+
+(defn exec
+  [client method params]
   (let [connection (:command-connection @client)]
     (c/call connection method params)))
 
-(defn set-hide-channel-in-vim [connection hide-channel]
+
+(defn set-hide-channel-in-vim
+  [connection hide-channel]
   (let [vim-command (format "let g:hide_channel = %d" hide-channel)]
     (c/call connection "nvim_command" [vim-command])))
+
 
 (defn start
   ([]
@@ -81,13 +90,16 @@
           :event-channel event-channel}))
      (println "Can't find hide port. Can't start properly."))))
 
+
 (defn stop
   [client]
   (async/>!! (:event-channel client) "quit"))
 
+
 (defn- log-entries
   [conn-name connection]
   (map (fn [log-entry] (merge {:conn conn-name} log-entry)) (:log connection)))
+
 
 (defn get-log
   [client]
@@ -101,6 +113,7 @@
       ts-asc-conn-desc
       (concat command-log event-log))))
 
+
 (comment
   (def client (start "localhost" 7777))
   (def client (start "localhost" 50232))
@@ -109,7 +122,5 @@
   (exec client "nvim_command" [":echo 'testing2'"])
 
   (stop client))
-
-
 
 

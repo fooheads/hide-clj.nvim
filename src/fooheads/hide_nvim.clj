@@ -1,35 +1,48 @@
 (ns fooheads.hide-nvim
   (:require
-    [fooheads.hide-nvim.client :as client]
-    [fooheads.hide-nvim.navigate :as nav]
     [clojure.java.io :as io]
-    [clojure.string :as str]
     [clojure.main]
     [clojure.pprint :refer [pprint]]
     [clojure.stacktrace :refer [print-stack-trace]]
+    [clojure.string :as str]
+    [fooheads.hide-nvim.client :as client]
+    [fooheads.hide-nvim.navigate :as nav]
     [puget.printer :as puget]
     [time-literals.data-readers]
     [time-literals.read-write]))
 
+
 #_(def eval-code h/eval-code)
 
-(defn eval-code [connection code]
+
+(defn eval-code
+  [connection code]
   ;(prn "CODE:" args)
   (prn "ns:" (nav/get-namespace connection))
   (prn "code:" code)
   (println))
 
-(defn ns-switch [connection & args]
+
+(defn ns-switch
+  [connection & args]
   (prn "ns:" (nav/get-namespace connection)))
 
-(defn repl-prompt-separator [] (apply str (repeat 20 "-")))
 
-(defn repl-prompt []
+(defn repl-prompt-separator
+  []
+  (apply str (repeat 20 "-")))
+
+
+(defn repl-prompt
+  []
   (printf "%s\n%s=> " (repl-prompt-separator) (ns-name *ns*)))
+
 
 (defonce client (atom {}))
 
-(defn repl-init []
+
+(defn repl-init
+  []
   (set! *print-length* 10)
   (reset! client (client/start))
   (println "\nWelcome to Hide - The Headless IDE!"))
@@ -67,7 +80,8 @@
   (merge time-handlers other-print-handlers))
 
 
-(defn config []
+(defn config
+  []
   (let [config-filename (format "%s/.clojure/hide-config.edn"
                                 (System/getenv "HOME"))]
     (if (.exists (io/as-file config-filename))
@@ -75,7 +89,8 @@
       {})))
 
 
-(defn pprn [& forms]
+(defn pprn
+  [& forms]
   (alter-var-root
     #'puget.printer/*options*
     (fn [m]
@@ -91,7 +106,8 @@
     (puget/pprint form {:print-handlers print-handlers})))
 
 
-(defn repl-print [form]
+(defn repl-print
+  [form]
   (let [config (config)
         post-hook (get-in config [:repl :post-hook])]
     (println "\nresult:\n")
@@ -105,13 +121,16 @@
             (print-stack-trace e)))))))
 
 
-(defn print-log []
+(defn print-log
+  []
   (let [log (client/get-log @client)]
     (prn "num entries:" (count log))
     (doseq [msg log]
       (prn msg))))
 
-(defn -main [& args]
+
+(defn -main
+  [& args]
   (println "Hello")
   (clojure.main/repl
     :init #'repl-init
@@ -121,6 +140,7 @@
   (client/stop @client)
   (println "Goodbye")
   #_(System/exit 0))
+
 
 (comment
   (def client (atom (client/start "localhost" 7777)))
@@ -139,6 +159,7 @@
   (client/exec @client "nvim_command" ["wincmd H"])
   (def b (client/exec @client "nvim_create_buf" [true true]))
   (client/exec @client "nvim_command" [(format "buffer %d" (:n b))]))
+
 
 (comment
   (pprn (java.util.UUID/randomUUID))

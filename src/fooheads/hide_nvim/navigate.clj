@@ -1,14 +1,17 @@
 (ns fooheads.hide-nvim.navigate
   (:require
     [clojure.string :as str]
-    [fooheads.hide.navigate :as hn]
     [fooheads.hide-nvim.connection :as connection]
-    [fooheads.hide-nvim.rpc :as rpc]))
+    [fooheads.hide-nvim.rpc :as rpc]
+    [fooheads.hide.navigate :as hn]))
 
-(defn echo [connection s]
+
+(defn echo
+  [connection s]
   (let [escaped (clojure.string/replace s "\"" "\\\"")
         echo-command (str ":echo \"" escaped "\"")]
     (connection/call connection "nvim_command" [echo-command])))
+
 
 (defn get-cursor
   "Returns the cursor (row,col), with the same (row,col) as
@@ -18,12 +21,14 @@
         [row col] (connection/call connection "nvim_win_get_cursor" [current-win])]
     [row (+  col 1)]))
 
+
 (defn set-cursor
   "Sets the cursor at (row,col), with the same (row,col) as
   is visual inside nvim."
   [connection row col]
   (let [current-win (rpc/->Window 0)]
     (connection/call connection "nvim_win_set_cursor" [current-win [row (- col 1)]])))
+
 
 (defn get-lines
   "Returns the current buffer as a list of lines."
@@ -33,18 +38,24 @@
         to -1]
     (connection/call connection "nvim_buf_get_lines" [current-buffer from to false])))
 
+
 (defn get-buffer
   "Returns the full current buffer as a single string."
   [connection]
   (->> connection
-      get-lines
-      (clojure.string/join "\n")))
+       get-lines
+       (clojure.string/join "\n")))
 
-(defn edit [connection full-path]
+
+(defn edit
+  [connection full-path]
   (connection/call connection "nvim_command" [(str ":edit " full-path)]))
 
-(defn save-current-buffer [connection]
+
+(defn save-current-buffer
+  [connection]
   (connection/call connection "nvim_command" [(str ":w")]))
+
 
 (defn doc
   ([connection]
@@ -56,6 +67,7 @@
    (let [doc-text (hn/doc code row col)]
      (when doc-text
        (echo connection doc-text)))))
+
 
 (defn go-to-definition
   ([connection]
@@ -72,13 +84,12 @@
          (set-cursor connection new-row new-col))
        (echo connection "Can't find source file")))))
 
-(defn get-namespace [connection]
+
+(defn get-namespace
+  [connection]
   (let [code (get-buffer connection)
 
         [row col] (get-cursor connection)]
     (hn/get-namespace code row col)))
-
-
-
 
 
