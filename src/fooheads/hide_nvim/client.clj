@@ -113,12 +113,13 @@
 
 
 (comment
-  (def client (start "localhost" 7777))
-  (def client (start "localhost" 50232))
-
-  (exec client "nvim_get_current_line" [])
-  (exec client "nvim_command" [":echo 'testing2'"])
-
-  (stop client))
+  ;; first time
+  (do
+    (require '[fooheads.hide.navigate])
+    (def client (start "localhost" 61505)))
+  ;; rest of the times
+  (do
+    (stop client)
+    (def client (start "localhost" 61505))))
 
 

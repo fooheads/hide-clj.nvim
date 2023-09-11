@@ -1,4 +1,5 @@
-(ns example)
+(ns example
+  "Example namespace")
 
 
 (defn add
@@ -16,3 +17,4 @@
 (comment
   (reduce add [1 2 3])
   (map inc [1 2 3]))
+

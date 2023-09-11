@@ -1,2 +1,4 @@
 {:deps
- {hide-clj.nvim {:local/root ".."}}}
+ {fooheads/hide-clj {:local/root "../../hide-clj"}
+  fooheads/hide-clj.nvim {:local/root ".."}}}
+
