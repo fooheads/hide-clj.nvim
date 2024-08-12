@@ -41,7 +41,6 @@
 
 (defn repl-init
   []
-  (set! *print-length* 10)
   (reset! client (client/start))
   (println "\nWelcome to Hide - The Headless IDE!"))
 
