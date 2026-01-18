@@ -79,9 +79,16 @@
 
 (defn config
   []
-  (let [config-filename (format "%s/.clojure/hide-config.edn"
-                                (System/getenv "HOME"))]
-    (if (.exists (io/as-file config-filename))
+  (let [home (System/getenv "HOME")
+        xdg-config-home (or (System/getenv "XDG_CONFIG_HOME")
+                            (str home "/.config"))
+        legacy-config (format "%s/.clojure/hide-config.edn" home)
+        xdg-config (format "%s/hide/hide.edn" xdg-config-home)
+        config-filename (cond
+                          (.exists (io/as-file legacy-config)) legacy-config
+                          (.exists (io/as-file xdg-config)) xdg-config
+                          :else nil)]
+    (if config-filename
       (read-string (slurp config-filename))
       {})))
 
@@ -173,5 +180,3 @@
   (pprn #time/year-month "3030-01")
   (pprn #time/zone "Europe/London")
   (pprn #time/day-of-week "TUESDAY"))
-
-
